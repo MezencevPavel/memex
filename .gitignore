@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Virtual environment
+venv/
+env/
+ENV/
+
+# Database
+instance/
+*.db
+*.sqlite3
+
+# Uploads (картинки пользователя)
+static/uploads/
+
+# Env / секреты
+.env
+.env.local
+
+# Логи
+nohup.out
+*.log
+
+# Бэкапы
+backups/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

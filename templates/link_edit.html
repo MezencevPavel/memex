@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h1 class="mb-0">{% if link %}Редактировать ссылку{% else %}Новая ссылка{% endif %}</h1>
+    <a href="{{ url_for('links') }}" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> К списку</a>
+</div>
+
+<form method="POST">
+    <div class="row g-3 mb-3">
+        <div class="col-md-4">
+            <label class="form-label">Тема</label>
+            <input type="text" name="topic" class="form-control"
+                   value="{{ link.topic if link else '' }}"
+                   list="topics-list" placeholder="Python, DevOps...">
+            <datalist id="topics-list">
+                {% for t in topics %}<option value="{{ t }}">{% endfor %}
+            </datalist>
+        </div>
+        <div class="col-md-8">
+            <label class="form-label">Название</label>
+            <input type="text" name="title" class="form-control"
+                   value="{{ link.title if link else '' }}"
+                   placeholder="Например: Документация Flask" required>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">URL</label>
+        <input type="text" name="url" class="form-control"
+               value="{{ link.url if link else '' }}"
+               placeholder="https://... или ftp://... или file://..."
+               style="font-family: 'Consolas', 'Monaco', monospace; font-size: .9rem;" required>
+        <div class="form-text">Поддерживаются http, https, ftp, file и другие схемы.</div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Описание <span class="text-muted small">(необязательно)</span></label>
+        <textarea name="description" class="form-control" rows="3"
+                  placeholder="Короткое пояснение">{{ link.description if link else '' }}</textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Сохранить</button>
+    <a href="{{ url_for('links') }}" class="btn btn-secondary">Отмена</a>
+</form>
+{% endblock %}

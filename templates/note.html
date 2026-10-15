@@ -1,0 +1,759 @@
+{% extends "base.html" %}
+{% block content %}
+{% if breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-2">
+        <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Главная</a></li>
+        {% for c in breadcrumb %}
+            {% if loop.last %}
+                <li class="breadcrumb-item active">{{ c.name }}</li>
+            {% else %}
+                <li class="breadcrumb-item"><a href="{{ url_for('view_category', cat_id=c.id) }}">{{ c.name }}</a></li>
+            {% endif %}
+        {% endfor %}
+        <li class="breadcrumb-item active" aria-current="page">{{ note.title }}</li>
+    </ol>
+</nav>
+{% endif %}
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-2 flex-wrap" style="flex: 1; min-width: 320px;">
+        <h1 class="mb-0">
+            {% if note.is_pinned %}<i class="bi bi-star-fill pin-star"></i>{% endif %}
+            {{ note.title }}
+        </h1>
+        <div class="note-switcher position-relative" style="min-width: 280px;">
+            <div class="input-group input-group-sm">
+                <button class="btn btn-outline-secondary" type="button" onclick="history.back()" title="Назад">
+                    <i class="bi bi-arrow-left"></i>
+                </button>
+                <input type="text" id="noteSwitcher" class="form-control" placeholder="Перейти к заметке..." autocomplete="off">
+                <button class="btn btn-outline-secondary" type="button" id="noteSwitcherToggle" title="Все заметки">
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+            </div>
+            <div id="noteSwitcherResults" class="note-switcher-results"></div>
+        </div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap align-items-center">
+        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#moveModal">
+            <i class="bi bi-folder"></i> Переместить
+        </button>
+        <a href="{{ url_for('toggle_pin', note_id=note.id) }}" class="btn btn-outline-warning btn-sm">
+            <i class="bi bi-star{% if note.is_pinned %}-fill{% endif %}"></i>
+            {% if note.is_pinned %}Убрать{% else %}В избранное{% endif %}
+        </a>
+        <a href="{{ url_for('export_note_md', note_id=note.id) }}" class="btn btn-outline-secondary btn-sm" title="Скачать .md"><i class="bi bi-download"></i> .md</a>
+        <a href="{{ url_for('edit_note', note_id=note.id) }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i> Редактировать</a>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left"></i> Назад</a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-9">
+        <div class="card shadow-sm">
+            <div class="card-body note-content">
+                {{ content|safe }}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3 sidebar-right">
+        <!-- Ссылки -->
+        <div class="card mb-3">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                <b><i class="bi bi-link-45deg"></i> Ссылки</b>
+                <a href="{{ url_for('links') }}" class="small text-decoration-none">все →</a>
+            </div>
+            <div class="card-body py-2">
+                <div class="mb-2">
+                    <select id="linkTopic" class="form-select form-select-sm">
+                        <option value="">Все темы</option>
+                        {% for t in link_topics %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="input-group input-group-sm mb-2">
+                    <input type="text" id="linkSearch" class="form-control" placeholder="Найти ссылку..." autocomplete="off">
+                </div>
+                <div id="linkList" class="link-list">
+                    {% for l in all_links[:30] %}
+                    <div class="link-row" data-link-name="{{ l.title|lower }}" data-link-topic="{{ l.topic or 'Общее' }}" data-link-url="{{ l.url }}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <a href="{{ l.url }}" target="_blank" rel="noopener" class="link-name text-truncate text-decoration-none" title="{{ l.title }}">
+                                <span class="badge bg-light text-dark border me-1" style="font-size: .65rem;">{{ l.topic or 'Общее' }}</span>
+                                {{ l.title }}
+                            </a>
+                            <button class="btn btn-sm btn-link text-secondary p-0 px-1 copy-link-btn" title="Копировать URL">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-muted small mb-0">Ссылок нет. <a href="{{ url_for('add_link') }}">Добавить</a>.</p>
+                    {% endfor %}
+                </div>
+                <div id="linkEmpty" class="text-muted small" style="display: none;">Ничего не найдено.</div>
+            </div>
+        </div>
+
+        <!-- Телефоны -->
+        <div class="card mb-3">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                <b><i class="bi bi-telephone"></i> Телефоны</b>
+                <a href="{{ url_for('phones') }}" class="small text-decoration-none">все →</a>
+            </div>
+            <div class="card-body py-2">
+                <div class="mb-2">
+                    <select id="phoneTopic" class="form-select form-select-sm">
+                        <option value="">Все темы</option>
+                        {% for t in phone_topics %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="input-group input-group-sm mb-2">
+                    <input type="text" id="phoneSearch" class="form-control" placeholder="Найти контакт..." autocomplete="off">
+                </div>
+                <div id="phoneList" class="phone-list">
+                    {% for p in all_phones[:30] %}
+                    <div class="phone-row" data-phone-name="{{ p.name|lower }}" data-phone-topic="{{ p.topic or 'Общее' }}" data-phone-number="{{ p.number }}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="phone-name text-truncate" title="{{ p.name }} ({{ p.number }})">
+                                <span class="badge bg-light text-dark border me-1" style="font-size: .65rem;">{{ p.topic or 'Общее' }}</span>
+                                {{ p.name }}
+                            </span>
+                            <button class="btn btn-sm btn-link text-secondary p-0 px-1 copy-phone-right-btn" title="Копировать номер">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-muted small mb-0">Контактов нет. <a href="{{ url_for('add_phone') }}">Добавить</a>.</p>
+                    {% endfor %}
+                </div>
+                <div id="phoneEmpty" class="text-muted small" style="display: none;">Ничего не найдено.</div>
+            </div>
+        </div>
+
+        <!-- Поиск по глоссарию -->
+        <div class="card mb-3">
+            <div class="card-header py-2"><b><i class="bi bi-book"></i> Поиск по глоссарию</b></div>
+            <div class="card-body py-2">
+                <div class="mb-2">
+                    <select id="glossaryTopic" class="form-select form-select-sm">
+                        <option value="">Все темы</option>
+                        {% for t in glossary_topics %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="glossary-search-wrap position-relative">
+                    <div class="input-group input-group-sm">
+                        <input type="text" id="glossarySearch" class="form-control" placeholder="print..." autocomplete="off">
+                        <button class="btn btn-outline-secondary" type="button" onclick="clearGlossarySearch()"><i class="bi bi-x"></i></button>
+                    </div>
+                    <div id="glossaryResults" class="glossary-results"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Сниппеты -->
+        <div class="card mb-3">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                <b><i class="bi bi-code-square"></i> Сниппеты</b>
+                <a href="{{ url_for('snippets') }}" class="small text-decoration-none">все →</a>
+            </div>
+            <div class="card-body py-2">
+                <div class="mb-2">
+                    <select id="snippetTopic" class="form-select form-select-sm">
+                        <option value="">Все темы</option>
+                        {% for t in snippet_topics %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="input-group input-group-sm mb-2">
+                    <input type="text" id="snippetSearch" class="form-control" placeholder="Найти команду..." autocomplete="off">
+                </div>
+                <div id="snippetList" class="snippet-list">
+                    {% for s in all_snippets[:30] %}
+                    <div class="snippet-row" data-snippet-name="{{ s.name|lower }}" data-snippet-topic="{{ s.topic or 'Общее' }}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="snippet-name text-truncate" title="{{ s.name }}">
+                                <span class="badge bg-light text-dark border me-1" style="font-size: .65rem;">{{ s.topic or 'Общее' }}</span>
+                                {{ s.name }}
+                            </span>
+                            <button class="btn btn-sm btn-link text-secondary p-0 px-1 copy-snippet-btn" data-cmd="{{ s.command|e }}" title="Копировать">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-muted small mb-0">Сниппетов нет. <a href="{{ url_for('add_snippet') }}">Добавить</a>.</p>
+                    {% endfor %}
+                </div>
+                <div id="snippetEmpty" class="text-muted small" style="display: none;">Ничего не найдено.</div>
+            </div>
+        </div>
+
+        {% if toc_html %}
+        <div class="card mb-3 toc-card">
+            <div class="card-header py-2"><b><i class="bi bi-list-ul"></i> Содержание</b></div>
+            <div class="card-body py-2">
+                {{ toc_html|safe }}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if used_terms %}
+        <div class="card mb-3">
+            <div class="card-header py-2"><b><i class="bi bi-book"></i> Термины в заметке</b></div>
+            <div class="card-body py-2">
+                <ul class="list-unstyled mb-0">
+                    {% for t in used_terms %}
+                    <li class="mb-1"><span class="glossary-term">{{ t }}</span></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if siblings %}
+        <div class="card">
+            <div class="card-header py-2"><b><i class="bi bi-files"></i> Рядом в категории</b></div>
+            <div class="card-body py-2">
+                <ul class="list-unstyled mb-0">
+                    {% for s in siblings %}
+                    <li class="mb-1 text-truncate">
+                        <a href="{{ url_for('view_note', note_id=s.id) }}" class="text-decoration-none">
+                            {% if s.is_pinned %}<i class="bi bi-star-fill pin-star"></i>{% else %}<i class="bi bi-file-text text-muted"></i>{% endif %}
+                            {{ s.title }}
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Модальное окно перемещения -->
+<div class="modal fade" id="moveModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-folder"></i> Переместить заметку</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted mb-2">
+                    Текущая категория:
+                    <b>{% if note.category %}{{ note.category.name }}{% else %}без категории{% endif %}</b>
+                </p>
+                <div class="input-group input-group-sm mb-2">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" id="moveSearch" class="form-control" placeholder="Поиск категории...">
+                </div>
+                <div class="move-tree" id="moveTree">
+                    <p class="text-muted small">Загрузка...</p>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="moveTo(null)">
+                    <i class="bi bi-x-circle"></i> Без категории
+                </button>
+                <div>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary btn-sm" id="moveConfirm" onclick="moveTo(selectedCatId)" disabled>
+                        <i class="bi bi-check"></i> Переместить сюда
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .toc-card ul { list-style: none; padding-left: 0; margin: 0; }
+    .toc-card ul ul { padding-left: 14px; }
+    .toc-card a { color: #495057; text-decoration: none; display: block; padding: 2px 0; font-size: .9rem; }
+    .toc-card a:hover { color: #0d6efd; }
+    .note-content h1, .note-content h2, .note-content h3 { scroll-margin-top: 20px; }
+    .note-content img { max-width: 100%; height: auto; border-radius: 6px; margin: 8px 0; }
+
+    .sidebar-right {
+        position: sticky;
+        top: 20px;
+        align-self: flex-start;
+        max-height: calc(100vh - 40px);
+        overflow-y: auto;
+    }
+    @media (max-width: 991px) {
+        .sidebar-right { position: static; max-height: none; }
+    }
+
+    .code-wrap { position: relative; }
+    .code-copy {
+        position: absolute;
+        top: 6px; right: 6px;
+        background: #ffffff;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        font-size: .75rem;
+        padding: 2px 8px;
+        color: #495057;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity .15s;
+    }
+    .code-wrap:hover .code-copy { opacity: 1; }
+    .code-copy:hover { background: #e9ecef; }
+    .code-copy.copied { color: #198754; border-color: #198754; opacity: 1; }
+
+    .glossary-results {
+        position: absolute;
+        top: 100%;
+        left: 0; right: 0;
+        background: #fff;
+        border: 1px solid #dee2e6;
+        border-top: none;
+        border-radius: 0 0 6px 6px;
+        max-height: 380px;
+        overflow-y: auto;
+        z-index: 500;
+        box-shadow: 0 6px 18px rgba(0,0,0,.08);
+        display: none;
+    }
+    .glossary-results.open { display: block; }
+    .glossary-result {
+        padding: 8px 12px;
+        border-bottom: 1px solid #f1f3f5;
+    }
+    .glossary-result:last-child { border-bottom: none; }
+    .glossary-result .g-term { font-weight: 600; color: #6f42c1; font-size: .9rem; }
+    .glossary-result .g-def { color: #495057; font-size: .82rem; margin-top: 4px; }
+    .glossary-empty { padding: 10px 12px; color: #6c757d; font-size: .85rem; }
+
+    .note-switcher-results {
+        position: absolute;
+        top: 100%;
+        left: 0; right: 0;
+        background: #fff;
+        border: 1px solid #dee2e6;
+        border-top: none;
+        border-radius: 0 0 6px 6px;
+        max-height: 340px;
+        overflow-y: auto;
+        z-index: 500;
+        box-shadow: 0 6px 18px rgba(0,0,0,.08);
+        display: none;
+    }
+    .note-switcher-results.open { display: block; }
+    .note-switcher-item {
+        padding: 6px 10px;
+        font-size: .88rem;
+        cursor: pointer;
+        border-bottom: 1px solid #f1f3f5;
+    }
+    .note-switcher-item:last-child { border-bottom: none; }
+    .note-switcher-item:hover { background: #f8f9fa; }
+    .note-switcher-item .ns-cat { color: #6c757d; font-size: .75rem; }
+    .note-switcher-empty { padding: 10px; color: #6c757d; font-size: .85rem; }
+
+    .snippet-list { max-height: 340px; overflow-y: auto; }
+    .snippet-row {
+        padding: 4px 6px;
+        border-radius: 4px;
+        font-size: .85rem;
+    }
+    .snippet-row:hover { background: #f1f3f5; }
+    .snippet-row .snippet-name { color: #212529; }
+    .copy-snippet-btn { text-decoration: none; }
+    .copy-snippet-btn.copied { color: #198754 !important; }
+
+    .link-list { max-height: 240px; overflow-y: auto; }
+    .link-row { padding: 4px 6px; border-radius: 4px; font-size: .85rem; }
+    .link-row:hover { background: #f1f3f5; }
+    .link-name { color: #212529; }
+    .copy-link-btn { text-decoration: none; }
+    .copy-link-btn.copied { color: #198754 !important; }
+
+    .phone-list { max-height: 240px; overflow-y: auto; }
+    .phone-row { padding: 4px 6px; border-radius: 4px; font-size: .85rem; }
+    .phone-row:hover { background: #f1f3f5; }
+    .phone-name { color: #212529; }
+    .copy-phone-right-btn { text-decoration: none; }
+    .copy-phone-right-btn.copied { color: #198754 !important; }
+
+    .move-tree {
+        max-height: 400px;
+        overflow-y: auto;
+        border: 1px solid #e9ecef;
+        border-radius: 6px;
+        padding: 6px;
+        background: #fdfdfd;
+    }
+    .move-node {
+        padding: 3px 6px;
+        border-radius: 4px;
+        font-size: .9rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+    }
+    .move-node:hover { background: #f1f3f5; }
+    .move-node.selected { background: #cfe2ff; }
+    .move-toggle {
+        width: 18px;
+        display: inline-block;
+        text-align: center;
+        color: #6c757d;
+        cursor: pointer;
+        font-size: .7rem;
+    }
+    .move-toggle-placeholder { width: 18px; display: inline-block; }
+    .move-children { display: none; }
+    .move-children.open { display: block; }
+</style>
+
+<script>
+let selectedCatId = null;
+let moveTreeData = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    function escapeHtml(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // Кнопки копирования кода
+    document.querySelectorAll('.note-content pre').forEach(function(pre) {
+        const wrap = document.createElement('div');
+        wrap.className = 'code-wrap';
+        pre.parentNode.insertBefore(wrap, pre);
+        wrap.appendChild(pre);
+
+        const btn = document.createElement('button');
+        btn.className = 'code-copy';
+        btn.type = 'button';
+        btn.innerHTML = '<i class="bi bi-clipboard"></i> Копировать';
+        wrap.appendChild(btn);
+
+        btn.addEventListener('click', function() {
+            const code = pre.querySelector('code');
+            const text = code ? code.innerText : pre.innerText;
+            navigator.clipboard.writeText(text).then(function() {
+                btn.innerHTML = '<i class="bi bi-check"></i> Скопировано';
+                btn.classList.add('copied');
+                setTimeout(function() {
+                    btn.innerHTML = '<i class="bi bi-clipboard"></i> Копировать';
+                    btn.classList.remove('copied');
+                }, 1500);
+            });
+        });
+    });
+
+    // Поиск по глоссарию
+    const gInput = document.getElementById('glossarySearch');
+    const gResults = document.getElementById('glossaryResults');
+    const gTopic = document.getElementById('glossaryTopic');
+    let gTimer = null;
+
+    if (gInput) {
+        function fetchGlossary() {
+            const q = gInput.value.trim();
+            if (!q) { gResults.classList.remove('open'); gResults.innerHTML = ''; return; }
+            let url = '/api/glossary/search?q=' + encodeURIComponent(q);
+            if (gTopic && gTopic.value) url += '&topic=' + encodeURIComponent(gTopic.value);
+            fetch(url)
+                .then(r => r.json())
+                .then(function(data) {
+                    if (!data.length) {
+                        gResults.innerHTML = '<div class="glossary-empty">Ничего не найдено.</div>';
+                    } else {
+                        let html = '';
+                        data.forEach(function(item) {
+                            html += '<div class="glossary-result">'
+                                 +  '<div class="g-term"><span class="badge bg-secondary me-1">' + escapeHtml(item.topic || 'Общее') + '</span>' + escapeHtml(item.term) + '</div>'
+                                 +  '<div class="g-def">' + item.definition_html + '</div>'
+                                 +  '</div>';
+                        });
+                        gResults.innerHTML = html;
+                    }
+                    gResults.classList.add('open');
+                })
+                .catch(() => {});
+        }
+        gInput.addEventListener('input', function() {
+            clearTimeout(gTimer);
+            gTimer = setTimeout(fetchGlossary, 150);
+        });
+        if (gTopic) gTopic.addEventListener('change', fetchGlossary);
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.glossary-search-wrap') && !e.target.closest('#glossaryTopic')) {
+                gResults.classList.remove('open');
+            }
+        });
+    }
+
+    // Переключатель заметок
+    const nsInput = document.getElementById('noteSwitcher');
+    const nsResults = document.getElementById('noteSwitcherResults');
+    const nsToggle = document.getElementById('noteSwitcherToggle');
+    let nsTimer = null;
+
+    function openNs(data) {
+        if (!data.length) {
+            nsResults.innerHTML = '<div class="note-switcher-empty">Ничего не найдено.</div>';
+            nsResults.classList.add('open');
+            return;
+        }
+        let html = '';
+        data.forEach(function(item) {
+            html += '<div class="note-switcher-item" data-id="' + item.id + '">'
+                 +  '<div>' + escapeHtml(item.title) + '</div>'
+                 +  '<div class="ns-cat">' + escapeHtml(item.category) + '</div>'
+                 +  '</div>';
+        });
+        nsResults.innerHTML = html;
+        nsResults.classList.add('open');
+        nsResults.querySelectorAll('.note-switcher-item').forEach(function(el) {
+            el.addEventListener('click', function() {
+                window.location.href = '/note/' + el.getAttribute('data-id');
+            });
+        });
+    }
+
+    function fetchNs(q) {
+        fetch('/api/notes/search?q=' + encodeURIComponent(q || ''))
+            .then(r => r.json())
+            .then(openNs)
+            .catch(() => {});
+    }
+
+    if (nsInput) {
+        nsInput.addEventListener('input', function() {
+            clearTimeout(nsTimer);
+            nsTimer = setTimeout(function() { fetchNs(nsInput.value.trim()); }, 150);
+        });
+        nsInput.addEventListener('focus', function() { fetchNs(nsInput.value.trim()); });
+        if (nsToggle) {
+            nsToggle.addEventListener('click', function(e) {
+                e.stopPropagation();
+                fetchNs(nsInput.value.trim());
+            });
+        }
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.note-switcher')) {
+                nsResults.classList.remove('open');
+            }
+        });
+    }
+
+    // Сниппеты
+    const snInput = document.getElementById('snippetSearch');
+    const snTopic = document.getElementById('snippetTopic');
+    const snEmpty = document.getElementById('snippetEmpty');
+
+    document.querySelectorAll('.copy-snippet-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const cmd = btn.getAttribute('data-cmd');
+            navigator.clipboard.writeText(cmd).then(function() {
+                const orig = btn.innerHTML;
+                btn.innerHTML = '<i class="bi bi-check"></i>';
+                btn.classList.add('copied');
+                setTimeout(function() {
+                    btn.innerHTML = orig;
+                    btn.classList.remove('copied');
+                }, 1500);
+            });
+        });
+    });
+
+    function filterSnippets() {
+        const q = (snInput ? snInput.value.trim().toLowerCase() : '');
+        const topic = (snTopic ? snTopic.value : '');
+        let visible = 0;
+        document.querySelectorAll('.snippet-row').forEach(function(row) {
+            const name = row.getAttribute('data-snippet-name') || '';
+            const rowTopic = row.getAttribute('data-snippet-topic') || '';
+            const matchQ = !q || name.indexOf(q) !== -1;
+            const matchTopic = !topic || rowTopic === topic;
+            const match = matchQ && matchTopic;
+            row.style.display = match ? '' : 'none';
+            if (match) visible++;
+        });
+        if (snEmpty) snEmpty.style.display = visible === 0 ? 'block' : 'none';
+    }
+
+    if (snInput) snInput.addEventListener('input', filterSnippets);
+    if (snTopic) snTopic.addEventListener('change', filterSnippets);
+
+    // Ссылки
+    const lkInput = document.getElementById('linkSearch');
+    const lkTopic = document.getElementById('linkTopic');
+    const lkEmpty = document.getElementById('linkEmpty');
+
+    document.querySelectorAll('.copy-link-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const row = btn.closest('.link-row');
+            const url = row.getAttribute('data-link-url');
+            navigator.clipboard.writeText(url).then(function() {
+                const orig = btn.innerHTML;
+                btn.innerHTML = '<i class="bi bi-check"></i>';
+                btn.classList.add('copied');
+                setTimeout(function() {
+                    btn.innerHTML = orig;
+                    btn.classList.remove('copied');
+                }, 1500);
+            });
+        });
+    });
+
+    function filterLinks() {
+        const q = (lkInput ? lkInput.value.trim().toLowerCase() : '');
+        const topic = (lkTopic ? lkTopic.value : '');
+        let visible = 0;
+        document.querySelectorAll('.link-row').forEach(function(row) {
+            const name = row.getAttribute('data-link-name') || '';
+            const rowTopic = row.getAttribute('data-link-topic') || '';
+            const matchQ = !q || name.indexOf(q) !== -1;
+            const matchTopic = !topic || rowTopic === topic;
+            const match = matchQ && matchTopic;
+            row.style.display = match ? '' : 'none';
+            if (match) visible++;
+        });
+        if (lkEmpty) lkEmpty.style.display = visible === 0 ? 'block' : 'none';
+    }
+
+    if (lkInput) lkInput.addEventListener('input', filterLinks);
+    if (lkTopic) lkTopic.addEventListener('change', filterLinks);
+
+    // Телефоны
+    const phInput = document.getElementById('phoneSearch');
+    const phTopic = document.getElementById('phoneTopic');
+    const phEmpty = document.getElementById('phoneEmpty');
+
+    document.querySelectorAll('.copy-phone-right-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const row = btn.closest('.phone-row');
+            const num = row.getAttribute('data-phone-number');
+            navigator.clipboard.writeText(num).then(function() {
+                const orig = btn.innerHTML;
+                btn.innerHTML = '<i class="bi bi-check"></i>';
+                btn.classList.add('copied');
+                setTimeout(function() {
+                    btn.innerHTML = orig;
+                    btn.classList.remove('copied');
+                }, 1500);
+            });
+        });
+    });
+
+    function filterPhones() {
+        const q = (phInput ? phInput.value.trim().toLowerCase() : '');
+        const topic = (phTopic ? phTopic.value : '');
+        let visible = 0;
+        document.querySelectorAll('.phone-row').forEach(function(row) {
+            const name = row.getAttribute('data-phone-name') || '';
+            const rowTopic = row.getAttribute('data-phone-topic') || '';
+            const matchQ = !q || name.indexOf(q) !== -1;
+            const matchTopic = !topic || rowTopic === topic;
+            const match = matchQ && matchTopic;
+            row.style.display = match ? '' : 'none';
+            if (match) visible++;
+        });
+        if (phEmpty) phEmpty.style.display = visible === 0 ? 'block' : 'none';
+    }
+
+    if (phInput) phInput.addEventListener('input', filterPhones);
+    if (phTopic) phTopic.addEventListener('change', filterPhones);
+
+    // Модальное окно перемещения
+    const moveModal = document.getElementById('moveModal');
+    if (moveModal) {
+        moveModal.addEventListener('show.bs.modal', function() {
+            const treeContainer = document.getElementById('moveTree');
+            if (treeContainer.dataset.loaded === '1') return;
+            fetch('/api/categories/tree')
+                .then(r => r.json())
+                .then(function(data) {
+                    moveTreeData = data;
+                    renderMoveTree(data, treeContainer, 0);
+                    treeContainer.dataset.loaded = '1';
+                })
+                .catch(() => {
+                    treeContainer.innerHTML = '<p class="text-danger small">Ошибка загрузки.</p>';
+                });
+        });
+    }
+});
+
+function renderMoveTree(nodes, container, depth) {
+    container.innerHTML = '';
+    if (!nodes.length) {
+        container.innerHTML = '<p class="text-muted small mb-0">Категорий нет. Можно переместить «Без категории».</p>';
+        return;
+    }
+    nodes.forEach(function(node) { container.appendChild(buildMoveNode(node, depth)); });
+}
+
+function buildMoveNode(node, depth) {
+    const wrap = document.createElement('div');
+    const row = document.createElement('div');
+    row.className = 'move-node';
+    row.style.paddingLeft = (depth * 16 + 4) + 'px';
+    row.dataset.catId = node.id;
+    row.dataset.catName = node.name.toLowerCase();
+
+    const hasChildren = node.children && node.children.length;
+    const toggle = document.createElement('span');
+    toggle.className = hasChildren ? 'move-toggle' : 'move-toggle-placeholder';
+    toggle.innerHTML = hasChildren ? '<i class="bi bi-caret-right-fill"></i>' : '';
+
+    const icon = document.createElement('i');
+    icon.className = 'bi bi-folder-fill text-warning me-1';
+
+    const name = document.createElement('span');
+    name.textContent = node.name;
+
+    row.appendChild(toggle);
+    row.appendChild(icon);
+    row.appendChild(name);
+    wrap.appendChild(row);
+
+    if (hasChildren) {
+        const children = document.createElement('div');
+        children.className = 'move-children';
+        node.children.forEach(function(c) { children.appendChild(buildMoveNode(c, depth + 1)); });
+        wrap.appendChild(children);
+
+        toggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            children.classList.toggle('open');
+            toggle.querySelector('i').style.transform = children.classList.contains('open') ? 'rotate(90deg)' : '';
+        });
+    }
+
+    row.addEventListener('click', function() {
+        document.querySelectorAll('.move-node').forEach(n => n.classList.remove('selected'));
+        row.classList.add('selected');
+        selectedCatId = parseInt(row.dataset.catId);
+        const btn = document.getElementById('moveConfirm');
+        if (btn) btn.disabled = false;
+    });
+
+    return wrap;
+}
+
+function moveTo(catId) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/move/{{ note.id }}';
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'category_id';
+    input.value = catId === null ? '' : catId;
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
+}
+</script>
+{% endblock %}

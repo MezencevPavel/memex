@@ -1,0 +1,460 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="edit-header">
+    <h1 class="mb-0">{% if note %}Редактировать{% else %}Новая запись{% endif %}</h1>
+    <div class="d-flex gap-2 flex-wrap">
+        <button type="button" class="btn btn-outline-secondary btn-sm mb-0" data-bs-toggle="modal" data-bs-target="#mdHelpModal" title="Шпаргалка по Markdown">
+            <i class="bi bi-question-circle"></i> Markdown
+        </button>
+        <button type="button" id="uploadImageBtn" class="btn btn-outline-secondary btn-sm mb-0" title="Загрузить картинку">
+            <i class="bi bi-image"></i> Картинка
+        </button>
+        <input type="file" id="imageInput" accept="image/*" style="display: none;">
+        {% if note %}
+            <a href="{{ url_for('export_note_md', note_id=note.id) }}" class="btn btn-outline-secondary btn-sm" title="Скачать .md"><i class="bi bi-download"></i> .md</a>
+        {% endif %}
+        <label class="btn btn-outline-secondary btn-sm mb-0" title="Загрузить .md — создастся новая заметка">
+            <i class="bi bi-upload"></i> .md
+            <input type="file" id="mdUpload" accept=".md,.markdown,.txt" style="display: none;">
+        </label>
+        <button type="submit" form="noteForm" class="btn btn-primary"><i class="bi bi-save"></i> Сохранить</button>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">Отмена</a>
+    </div>
+</div>
+
+<form method="POST" id="noteForm">
+    <div class="mb-3">
+        <label class="form-label">Заголовок</label>
+        <input type="text" name="title" class="form-control"
+               value="{% if note %}{{ note.title }}{% elif prefill_title %}{{ prefill_title }}{% endif %}" required>
+    </div>
+    <div class="row mb-3">
+        <div class="col-md-8">
+            <label class="form-label">Категория</label>
+            <select name="category_id" class="form-select">
+                <option value="">— Без категории —</option>
+                {% for cat in all_categories %}
+                    <option value="{{ cat.id }}"
+                        {% if (note and note.category_id == cat.id) or (not note and preselected_cat == cat.id) %}selected{% endif %}>
+                        {{ cat.name }}
+                    </option>
+                    {% for sub in cat.children %}
+                        <option value="{{ sub.id }}"
+                            {% if (note and note.category_id == sub.id) or (not note and preselected_cat == sub.id) %}selected{% endif %}>
+                            &nbsp;&nbsp;↳ {{ sub.name }}
+                        </option>
+                    {% endfor %}
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+            <div class="form-check">
+                <input type="checkbox" name="is_pinned" class="form-check-input" id="is_pinned"
+                       {% if note and note.is_pinned %}checked{% endif %}>
+                <label class="form-check-label" for="is_pinned"><i class="bi bi-star text-warning"></i> В избранное</label>
+            </div>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Содержимое (Markdown)</label>
+        <div class="row g-2">
+            <div class="col-md-6">
+                <textarea name="content" id="content" class="form-control" required
+                          placeholder="Пиши здесь Markdown...">{{ note.content if note else '' }}</textarea>
+            </div>
+            <div class="col-md-6">
+                <div class="border rounded p-3 bg-white note-content" id="preview">
+                    <p class="text-muted">Предпросмотр появится здесь...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- Модалка: вставка картинки -->
+<div class="modal fade" id="imageModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-image"></i> Вставка картинки</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-3">
+                    <img id="imgPreview" src="" style="max-width: 100%; max-height: 300px; border-radius: 6px;">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label"><b>Ширина</b></label>
+                    <div class="btn-group w-100" role="group">
+                        <input type="radio" class="btn-check" name="imgWidth" id="w25" value="25">
+                        <label class="btn btn-outline-secondary" for="w25">25%</label>
+
+                        <input type="radio" class="btn-check" name="imgWidth" id="w50" value="50">
+                        <label class="btn btn-outline-secondary" for="w50">50%</label>
+
+                        <input type="radio" class="btn-check" name="imgWidth" id="w75" value="75" checked>
+                        <label class="btn btn-outline-secondary" for="w75">75%</label>
+
+                        <input type="radio" class="btn-check" name="imgWidth" id="w100" value="100">
+                        <label class="btn btn-outline-secondary" for="w100">100%</label>
+
+                        <input type="radio" class="btn-check" name="imgWidth" id="wCustom" value="custom">
+                        <label class="btn btn-outline-secondary" for="wCustom">Своё</label>
+                    </div>
+                    <div id="customWidthBlock" class="mt-2" style="display: none;">
+                        <div class="input-group input-group-sm" style="max-width: 200px;">
+                            <input type="number" id="customWidthVal" class="form-control" value="500" min="50" max="3000">
+                            <span class="input-group-text">px</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label"><b>Выравнивание</b></label>
+                    <div class="btn-group w-100" role="group">
+                        <input type="radio" class="btn-check" name="imgAlign" id="aLeft" value="left" checked>
+                        <label class="btn btn-outline-secondary" for="aLeft"><i class="bi bi-align-start"></i> Слева</label>
+
+                        <input type="radio" class="btn-check" name="imgAlign" id="aCenter" value="center">
+                        <label class="btn btn-outline-secondary" for="aCenter"><i class="bi bi-align-center"></i> Центр</label>
+
+                        <input type="radio" class="btn-check" name="imgAlign" id="aRight" value="right">
+                        <label class="btn btn-outline-secondary" for="aRight"><i class="bi bi-align-end"></i> Справа</label>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label"><b>Alt-текст</b> <span class="text-muted small">(для SEO и если картинка не загрузится)</span></label>
+                    <input type="text" id="imgAlt" class="form-control form-control-sm" placeholder="Например: скриншот настроек">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="insertImageBtn"><i class="bi bi-check"></i> Вставить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модалка: шпаргалка по Markdown -->
+<div class="modal fade" id="mdHelpModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-markdown"></i> Шпаргалка по Markdown</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">
+                    Полная версия: <a href="{{ url_for('help_markdown') }}" target="_blank">/help/markdown</a>
+                </p>
+
+                <h6>Заголовки</h6>
+                <table class="table table-sm">
+                    <tr><td style="width: 40%;"><code># Заголовок 1</code></td><td>Крупный</td></tr>
+                    <tr><td><code>## Заголовок 2</code></td><td>Поменьше</td></tr>
+                    <tr><td><code>### Заголовок 3</code></td><td>Ещё меньше</td></tr>
+                </table>
+
+                <h6>Текст</h6>
+                <table class="table table-sm">
+                    <tr><td style="width: 40%;"><code>**жирный**</code></td><td><b>жирный</b></td></tr>
+                    <tr><td><code>*курсив*</code></td><td><i>курсив</i></td></tr>
+                    <tr><td><code>~~зачёркнутый~~</code></td><td><s>зачёркнутый</s></td></tr>
+                    <tr><td><code>`код в строке`</code></td><td><code>код</code></td></tr>
+                </table>
+
+                <h6>Списки</h6>
+                <pre>- пункт
+- пункт
+  - вложенный</pre>
+                <pre>1. первый
+2. второй</pre>
+
+                <h6>Ссылки и прочее</h6>
+                <table class="table table-sm">
+                    <tr><td style="width: 40%;"><code>[текст](url)</code></td><td>ссылка</td></tr>
+                    <tr><td><code>&gt; цитата</code></td><td>цитата</td></tr>
+                    <tr><td><code>---</code></td><td>горизонтальная линия</td></tr>
+                </table>
+
+                <h6>Код (три обратных бэктика <kbd>Ё</kbd>)</h6>
+<pre>```python
+print("Привет")
+```</pre>
+
+                <h6>Картинки</h6>
+                <table class="table table-sm">
+                    <tr><td style="width: 40%;"><code>![alt](url)</code></td><td>картинка полной ширины</td></tr>
+                    <tr><td><code>&lt;img src="url" width="400"&gt;</code></td><td>картинка шириной 400px</td></tr>
+                    <tr><td><code>&lt;img src="url" style="display:block;margin:0 auto;"&gt;</code></td><td>по центру</td></tr>
+                    <tr><td>Кнопка «🖼 Картинка»</td><td>модалка с настройками</td></tr>
+                    <tr><td><kbd>Ctrl</kbd>+<kbd>V</kbd></td><td>вставить скриншот из буфера</td></tr>
+                </table>
+
+                <h6>Таблицы</h6>
+<pre>| A | B |
+|---|---|
+| 1 | 2 |</pre>
+
+                <h6><i class="bi bi-magic"></i> Специальное</h6>
+                <table class="table table-sm mb-0">
+                    <tr><td style="width: 40%;"><code>[[Заметка]]</code></td><td>ссылка на другую заметку</td></tr>
+                    <tr><td><code>{{ '{{' }}термин{{ '}}' }}</code></td><td>термин из глоссария (tooltip)</td></tr>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <a href="{{ url_for('help_markdown') }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-box-arrow-up-right"></i> Полная версия
+                </a>
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .edit-header {
+        position: sticky;
+        top: 0;
+        background: #f8f9fa;
+        z-index: 100;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 0;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+        gap: 10px;
+        border-bottom: 1px solid #e9ecef;
+    }
+    #content {
+        min-height: 400px;
+        resize: vertical;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: .9rem;
+    }
+    #preview { min-height: 400px; }
+
+    .note-content img { max-width: 100%; height: auto; border-radius: 6px; margin: 8px 0; }
+
+    .code-wrap { position: relative; }
+    .code-copy {
+        position: absolute;
+        top: 6px; right: 6px;
+        background: #ffffff;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        font-size: .75rem;
+        padding: 2px 8px;
+        color: #495057;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity .15s;
+    }
+    .code-wrap:hover .code-copy { opacity: 1; }
+    .code-copy:hover { background: #e9ecef; }
+    .code-copy.copied { color: #198754; border-color: #198754; opacity: 1; }
+</style>
+
+<script src="/static/js/marked.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const textarea = document.getElementById('content');
+    const preview = document.getElementById('preview');
+
+    if (typeof marked === 'undefined') {
+        preview.innerHTML = '<p class="text-danger">Ошибка: библиотека marked не загрузилась.</p>';
+        return;
+    }
+
+    marked.setOptions({ breaks: true, gfm: true });
+
+    function addCopyButtons(root) {
+        root.querySelectorAll('pre').forEach(function(pre) {
+            if (pre.parentNode.classList.contains('code-wrap')) return;
+            const wrap = document.createElement('div');
+            wrap.className = 'code-wrap';
+            pre.parentNode.insertBefore(wrap, pre);
+            wrap.appendChild(pre);
+
+            const btn = document.createElement('button');
+            btn.className = 'code-copy';
+            btn.type = 'button';
+            btn.innerHTML = '<i class="bi bi-clipboard"></i> Копировать';
+            wrap.appendChild(btn);
+
+            btn.addEventListener('click', function() {
+                const code = pre.querySelector('code');
+                const text = code ? code.innerText : pre.innerText;
+                navigator.clipboard.writeText(text).then(function() {
+                    btn.innerHTML = '<i class="bi bi-check"></i> Скопировано';
+                    btn.classList.add('copied');
+                    setTimeout(function() {
+                        btn.innerHTML = '<i class="bi bi-clipboard"></i> Копировать';
+                        btn.classList.remove('copied');
+                    }, 1500);
+                });
+            });
+        });
+    }
+
+    function autoGrow() {
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.max(400, textarea.scrollHeight) + 'px';
+    }
+
+    function render() {
+        const raw = textarea.value;
+        if (!raw.trim()) {
+            preview.innerHTML = '<p class="text-muted">Предпросмотр появится здесь...</p>';
+            autoGrow();
+            return;
+        }
+        preview.innerHTML = marked.parse(raw);
+        addCopyButtons(preview);
+        autoGrow();
+    }
+
+    textarea.addEventListener('input', render);
+    render();
+
+    // Загрузка .md
+    const mdUpload = document.getElementById('mdUpload');
+    if (mdUpload) {
+        mdUpload.addEventListener('change', function() {
+            const file = mdUpload.files[0];
+            if (!file) return;
+            const formData = new FormData();
+            formData.append('files', file);
+            fetch('/notes/import.md', {
+                method: 'POST',
+                body: formData,
+                redirect: 'manual'
+            }).finally(function() {
+                window.location.href = '/notes';
+            });
+        });
+    }
+
+    // --- Картинки ---
+    const uploadBtn = document.getElementById('uploadImageBtn');
+    const imageInput = document.getElementById('imageInput');
+    const imageModalEl = document.getElementById('imageModal');
+    const imageModal = new bootstrap.Modal(imageModalEl);
+    const imgPreview = document.getElementById('imgPreview');
+    const imgAlt = document.getElementById('imgAlt');
+    const customWidthBlock = document.getElementById('customWidthBlock');
+    const customWidthVal = document.getElementById('customWidthVal');
+
+    let pendingImageUrl = null;
+    let pendingImageName = '';
+
+    // Обработка выбора "Своё" для ширины
+    document.querySelectorAll('input[name="imgWidth"]').forEach(function(r) {
+        r.addEventListener('change', function() {
+            customWidthBlock.style.display = (this.value === 'custom') ? 'block' : 'none';
+        });
+    });
+
+    async function uploadAndOpenModal(file) {
+        if (!file) return;
+        const fd = new FormData();
+        fd.append('image', file);
+        try {
+            const r = await fetch('/upload/image', { method: 'POST', body: fd });
+            const data = await r.json();
+            if (!r.ok) {
+                alert('Ошибка: ' + (data.error || r.status));
+                return;
+            }
+            pendingImageUrl = data.url;
+            pendingImageName = (file.name || 'картинка').replace(/\.[^.]+$/, '');
+            imgPreview.src = data.url;
+            imgAlt.value = pendingImageName;
+            // Сброс на 75% и слева
+            document.getElementById('w75').checked = true;
+            document.getElementById('aLeft').checked = true;
+            customWidthBlock.style.display = 'none';
+            imageModal.show();
+        } catch (e) {
+            alert('Ошибка загрузки: ' + e.message);
+        }
+    }
+
+    if (uploadBtn && imageInput) {
+        uploadBtn.addEventListener('click', function() { imageInput.click(); });
+        imageInput.addEventListener('change', function() {
+            if (imageInput.files.length) {
+                uploadAndOpenModal(imageInput.files[0]);
+                imageInput.value = '';
+            }
+        });
+    }
+
+    // Ctrl+V — вставка картинки из буфера
+    if (textarea) {
+        textarea.addEventListener('paste', function(e) {
+            const items = (e.clipboardData || window.clipboardData).items;
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                    e.preventDefault();
+                    const blob = items[i].getAsFile();
+                    uploadAndOpenModal(blob);
+                    return;
+                }
+            }
+        });
+    }
+
+    // Вставка картинки в текст
+    document.getElementById('insertImageBtn').addEventListener('click', function() {
+        if (!pendingImageUrl) return;
+
+        const widthSel = document.querySelector('input[name="imgWidth"]:checked').value;
+        let widthAttr = '';
+        if (widthSel === 'custom') {
+            const v = parseInt(customWidthVal.value, 10) || 500;
+            widthAttr = ' width="' + v + '"';
+        } else if (widthSel !== '100') {
+            // Проценты: используем style max-width
+            widthAttr = ' style="max-width: ' + widthSel + '%;"';
+        } else {
+            widthAttr = ' style="max-width: 100%;"';
+        }
+
+        const align = document.querySelector('input[name="imgAlign"]:checked').value;
+        let alignStyle = '';
+        if (align === 'center') alignStyle = 'display:block; margin:0 auto;';
+        else if (align === 'right') alignStyle = 'display:block; margin-left:auto;';
+
+        // Объединяем стили
+        let styleParts = [];
+        if (widthSel === 'custom') {
+            styleParts.push('width:' + (parseInt(customWidthVal.value, 10) || 500) + 'px');
+            styleParts.push('max-width:100%');
+        } else {
+            styleParts.push('max-width:' + widthSel + '%');
+        }
+        if (alignStyle) styleParts.push(alignStyle);
+
+        const styleAttr = ' style="' + styleParts.join('; ') + '"';
+        const alt = (imgAlt.value || pendingImageName).replace(/"/g, '&quot;');
+        const html = '<img src="' + pendingImageUrl + '" alt="' + alt + '"' + styleAttr + '>';
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const before = textarea.value.substring(0, start);
+        const after = textarea.value.substring(end);
+        textarea.value = before + html + after;
+        textarea.selectionStart = textarea.selectionEnd = start + html.length;
+        textarea.dispatchEvent(new Event('input'));
+
+        imageModal.hide();
+        pendingImageUrl = null;
+    });
+});
+</script>
+{% endblock %}

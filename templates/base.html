@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мои заметки</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        html, body { height: 100%; margin: 0; }
+        .sidebar {
+            position: fixed;
+            top: 0; left: 0; bottom: 0;
+            width: 250px;
+            background: #212529; color: #dee2e6;
+            padding: 16px 12px;
+            overflow-y: auto;
+        }
+        .sidebar h5 { color: #fff; margin-bottom: 12px; font-size: 1.05rem; }
+        .sidebar a { color: #adb5bd; text-decoration: none; display: block; padding: 5px 10px; border-radius: 6px; font-size: .9rem; }
+        .sidebar a:hover, .sidebar a.active { background: #343a40; color: #fff; }
+        .sidebar .nav-section { margin-top: 10px; }
+        .content {
+            margin-left: 250px;
+            padding: 24px 32px;
+            background: #f8f9fa;
+            min-height: 100vh;
+        }
+        pre { background: #f1f3f5; padding: 12px; border-radius: 6px; overflow-x: auto; }
+        code { color: #d63384; }
+        pre code { color: #212529; }
+        table { border-collapse: collapse; margin: 10px 0; }
+        th, td { border: 1px solid #dee2e6; padding: 6px 10px; }
+        th { background: #e9ecef; }
+        .pin-star { color: #ffc107; }
+
+        .wikilink {
+            color: #0d6efd;
+            text-decoration: none;
+            border-bottom: 1px dashed #0d6efd;
+            padding: 0 1px;
+        }
+        .wikilink:hover { background: #e7f1ff; }
+        .wikilink-missing {
+            color: #dc3545;
+            text-decoration: none;
+            border-bottom: 1px dashed #dc3545;
+            padding: 0 1px;
+        }
+        .wikilink-missing:hover { background: #fde8ea; }
+
+        .glossary-term {
+            border-bottom: 1px dotted #6f42c1;
+            color: #6f42c1;
+            cursor: help;
+            position: relative;
+        }
+        .glossary-term:hover { background: #f3eaff; }
+        .glossary-missing {
+            border-bottom: 1px dotted #dc3545;
+            color: #dc3545;
+            cursor: help;
+        }
+
+        [data-tooltip] { position: relative; }
+        [data-tooltip]:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: 0;
+            top: 100%;
+            margin-top: 6px;
+            background: #212529;
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: .85rem;
+            width: max-content;
+            max-width: 360px;
+            white-space: normal;
+            z-index: 1000;
+            box-shadow: 0 4px 14px rgba(0,0,0,.2);
+        }
+    </style>
+</head>
+<body>
+    {% if current_user.is_authenticated %}
+    <aside class="sidebar">
+        <h5><i class="bi bi-journal-text"></i> Мои заметки</h5>
+
+        <div class="nav-section">
+            <div class="small text-uppercase text-secondary mb-1 px-2">Навигация</div>
+            <a href="{{ url_for('index') }}"><i class="bi bi-house"></i> Главная</a>
+            <a href="{{ url_for('all_notes') }}"><i class="bi bi-card-list"></i> Все заметки</a>
+            <a href="{{ url_for('snippets') }}"><i class="bi bi-code-square"></i> Сниппеты</a>
+            <a href="{{ url_for('glossary') }}"><i class="bi bi-book"></i> Глоссарий</a>
+            <a href="{{ url_for('phones') }}"><i class="bi bi-telephone"></i> Телефоны</a>
+            <a href="{{ url_for('links') }}"><i class="bi bi-link-45deg"></i> Ссылки</a>
+            <a href="{{ url_for('categories') }}"><i class="bi bi-diagram-3"></i> Управление категориями</a>
+            <a href="{{ url_for('help_markdown') }}"><i class="bi bi-markdown"></i> Markdown</a>
+            <a href="{{ url_for('about') }}"><i class="bi bi-info-circle"></i> О проекте</a>
+        </div>
+
+        <div class="nav-section">
+            <a href="{{ url_for('add_note') }}"><i class="bi bi-plus-circle"></i> Новая заметка</a>
+        </div>
+
+        <hr class="text-secondary my-2">
+        <div class="small text-uppercase text-secondary mb-1 px-2">Поиск по заметкам</div>
+        <form method="GET" action="{{ url_for('search') }}" class="px-1">
+            <div class="input-group input-group-sm">
+                <input type="text" name="q" class="form-control" placeholder="Найти..." value="{{ q if q else '' }}">
+                <button class="btn btn-outline-light"><i class="bi bi-search"></i></button>
+            </div>
+        </form>
+
+        <div class="nav-section">
+            <div class="small text-uppercase text-secondary mb-1 px-2">Поиск по категориям</div>
+            <div class="category-search-wrap position-relative px-1">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text"><i class="bi bi-folder"></i></span>
+                    <input type="text" id="catSearch" class="form-control" placeholder="Категория..." autocomplete="off">
+                </div>
+                <div id="catResults" class="cat-results"></div>
+            </div>
+        </div>
+
+        <hr class="text-secondary my-2">
+        <div class="small text-uppercase text-secondary mb-1 px-2">Категории</div>
+        {% for cat in root_categories %}
+            <a href="{{ url_for('view_category', cat_id=cat.id) }}"><i class="bi bi-folder"></i> {{ cat.name }}</a>
+        {% else %}
+            <div class="small text-secondary px-2">Пока пусто</div>
+        {% endfor %}
+
+        <hr class="text-secondary my-2">
+        <a href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right"></i> Выйти ({{ current_user.username }})</a>
+    </aside>
+    {% endif %}
+    <main class="content">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-info">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </main>
+
+    <style>
+        .cat-results {
+            position: absolute;
+            top: 100%;
+            left: 0; right: 0;
+            margin: 0 4px;
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+            max-height: 320px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 6px 18px rgba(0,0,0,.15);
+            display: none;
+        }
+        .cat-results.open { display: block; }
+        .cat-result {
+            padding: 6px 10px;
+            font-size: .85rem;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f3f5;
+            color: #212529;
+        }
+        .cat-result:last-child { border-bottom: none; }
+        .cat-result:hover { background: #f8f9fa; }
+        .cat-result .cat-path { color: #6c757d; font-size: .75rem; }
+        .cat-empty { padding: 8px 10px; color: #6c757d; font-size: .85rem; }
+    </style>
+
+    <!-- Bootstrap JS — нужен для dropdown, tooltips и т.д. -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+    (function() {
+        const input = document.getElementById('catSearch');
+        const results = document.getElementById('catResults');
+        if (!input || !results) return;
+        let timer = null;
+
+        function escapeHtml(s) {
+            return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        function render(data) {
+            if (!data.length) {
+                results.innerHTML = '<div class="cat-empty">Ничего не найдено.</div>';
+                results.classList.add('open');
+                return;
+            }
+            let html = '';
+            data.forEach(function(item) {
+                html += '<div class="cat-result" data-id="' + item.id + '">'
+                     +  '<div>' + escapeHtml(item.name) + '</div>'
+                     +  '<div class="cat-path">' + escapeHtml(item.path) + '</div>'
+                     +  '</div>';
+            });
+            results.innerHTML = html;
+            results.classList.add('open');
+            results.querySelectorAll('.cat-result').forEach(function(el) {
+                el.addEventListener('click', function() {
+                    window.location.href = '/category/' + el.getAttribute('data-id');
+                });
+            });
+        }
+
+        input.addEventListener('input', function() {
+            const q = input.value.trim();
+            clearTimeout(timer);
+            if (!q) { results.classList.remove('open'); results.innerHTML = ''; return; }
+            timer = setTimeout(function() {
+                fetch('/api/categories/search?q=' + encodeURIComponent(q))
+                    .then(r => r.json())
+                    .then(render)
+                    .catch(() => {});
+            }, 150);
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.category-search-wrap')) {
+                results.classList.remove('open');
+            }
+        });
+    })();
+    </script>
+</body>
+</html>

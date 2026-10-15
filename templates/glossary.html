@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h1 class="mb-0"><i class="bi bi-book"></i> Глоссарий <span class="text-muted fs-5">({{ terms|length }})</span></h1>
+    <div class="d-flex gap-2 flex-wrap">
+        <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                <i class="bi bi-download"></i> Экспорт
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="{{ url_for('export_glossary', fmt='json') }}"><i class="bi bi-filetype-json"></i> JSON</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('export_glossary', fmt='md') }}"><i class="bi bi-filetype-md"></i> Markdown</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('export_glossary', fmt='csv') }}"><i class="bi bi-filetype-csv"></i> CSV (Excel)</a></li>
+            </ul>
+        </div>
+        <a href="{{ url_for('import_glossary') }}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-upload"></i> Импорт
+        </a>
+    </div>
+</div>
+
+<!-- Табы тем -->
+<div class="mb-3 d-flex flex-wrap gap-1">
+    <a href="{{ url_for('glossary') }}"
+       class="btn btn-sm {% if not topic_filter %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+        Все
+    </a>
+    {% for t in topics %}
+    <a href="{{ url_for('glossary', topic=t) }}"
+       class="btn btn-sm {% if topic_filter == t %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+        {{ t }}
+    </a>
+    {% endfor %}
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5>Новый термин</h5>
+        <form method="POST" action="{{ url_for('add_term') }}">
+            <div class="row g-2 mb-2">
+                <div class="col-md-4">
+                    <input type="text" name="topic" class="form-control" placeholder="Тема (Python, Docker...)"
+                           list="topics-list" value="{{ topic_filter if topic_filter else '' }}">
+                    <datalist id="topics-list">
+                        {% for t in topics %}<option value="{{ t }}">{% endfor %}
+                    </datalist>
+                </div>
+                <div class="col-md-8">
+                    <input type="text" name="term" class="form-control" placeholder="Термин" required>
+                </div>
+            </div>
+            <div class="mb-2">
+                <textarea name="definition" class="form-control" rows="3" placeholder="Определение (Markdown)" required></textarea>
+            </div>
+            <button class="btn btn-success"><i class="bi bi-plus-circle"></i> Добавить</button>
+        </form>
+    </div>
+</div>
+
+<div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
+    <h5 class="mb-0">Термины{% if topic_filter %} в теме «{{ topic_filter }}»{% endif %}</h5>
+    <div class="input-group input-group-sm" style="max-width: 400px;">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input type="text" id="glossary-search" class="form-control" placeholder="Поиск...">
+        <button class="btn btn-outline-secondary" type="button" onclick="clearSearch()"><i class="bi bi-x"></i></button>
+    </div>
+</div>
+<p class="text-muted small mb-3">Найдено: <span id="found-count">{{ terms|length }}</span></p>
+
+<div class="list-group mb-4" id="glossary-list">
+    {% for t in terms %}
+    <div class="list-group-item term-item" data-term-id="{{ t.id }}"
+         data-search="{{ (t.term ~ ' ' ~ t.definition)|lower }}">
+
+        <div class="term-view">
+            <div class="term-row" onclick="toggleTerm({{ t.id }})" style="cursor: pointer;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="flex-grow-1">
+                        <span class="badge bg-secondary me-2">{{ t.topic or 'Общее' }}</span>
+                        <b>{{ t.term }}</b>
+                        <span class="text-muted small ms-2 term-preview">
+                            — {{ t.definition[:80] }}{% if t.definition|length > 80 %}...{% endif %}
+                        </span>
+                    </div>
+                    <i class="bi bi-chevron-down term-chevron"></i>
+                </div>
+            </div>
+            <div class="term-full mt-2" style="display: none;">
+                <div class="border-start border-3 ps-3 mb-2" style="white-space: pre-wrap;">{{ t.definition }}</div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="startEdit({{ t.id }})">
+                        <i class="bi bi-pencil"></i> Редактировать
+                    </button>
+                    <a href="{{ url_for('delete_term', term_id=t.id) }}" class="btn btn-sm btn-outline-danger"
+                       onclick="return confirm('Удалить термин «{{ t.term }}»?')">
+                        <i class="bi bi-trash"></i> Удалить
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('edit_term', term_id=t.id) }}" class="term-edit" style="display: none;">
+            <div class="row g-2 mb-2">
+                <div class="col-md-4">
+                    <input type="text" name="topic" class="form-control form-control-sm" value="{{ t.topic or '' }}"
+                           list="topics-list" placeholder="Тема">
+                </div>
+                <div class="col-md-8">
+                    <input type="text" name="term" class="form-control form-control-sm fw-bold" value="{{ t.term }}">
+                </div>
+            </div>
+            <div class="mb-2">
+                <textarea name="definition" class="form-control form-control-sm" rows="4">{{ t.definition }}</textarea>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-primary"><i class="bi bi-check"></i> Сохранить</button>
+                <button type="button" class="btn btn-sm btn-secondary" onclick="cancelEdit({{ t.id }})">Отмена</button>
+            </div>
+        </form>
+    </div>
+    {% else %}
+    <p class="text-muted">Терминов пока нет. Добавь первый выше.</p>
+    {% endfor %}
+</div>
+
+<p class="text-muted text-center" id="no-results" style="display: none;">Ничего не найдено.</p>
+
+<div class="alert alert-secondary">
+    <b>Как использовать:</b> в заметке пиши <code>{{ '{{' }}термин{{ '}}' }}</code>. Tooltip покажет определение.
+</div>
+
+<script>
+function toggleTerm(id) {
+    const item = document.querySelector('.term-item[data-term-id="' + id + '"]');
+    const full = item.querySelector('.term-full');
+    const chevron = item.querySelector('.term-chevron');
+    const isHidden = full.style.display === 'none';
+    full.style.display = isHidden ? 'block' : 'none';
+    chevron.classList.toggle('bi-chevron-down', !isHidden);
+    chevron.classList.toggle('bi-chevron-up', isHidden);
+}
+
+function startEdit(id) {
+    const item = document.querySelector('.term-item[data-term-id="' + id + '"]');
+    item.querySelector('.term-view').style.display = 'none';
+    item.querySelector('.term-edit').style.display = 'block';
+}
+
+function cancelEdit(id) {
+    const item = document.querySelector('.term-item[data-term-id="' + id + '"]');
+    item.querySelector('.term-view').style.display = 'block';
+    item.querySelector('.term-edit').style.display = 'none';
+}
+
+const searchInput = document.getElementById('glossary-search');
+const items = document.querySelectorAll('.term-item');
+const foundCount = document.getElementById('found-count');
+const noResults = document.getElementById('no-results');
+
+function filterItems() {
+    const q = searchInput.value.trim().toLowerCase();
+    let visible = 0;
+    items.forEach(function(item) {
+        const haystack = item.getAttribute('data-search');
+        const match = !q || haystack.indexOf(q) !== -1;
+        item.style.display = match ? '' : 'none';
+        if (match) visible++;
+    });
+    foundCount.textContent = visible;
+    noResults.style.display = visible === 0 ? 'block' : 'none';
+}
+
+function clearSearch() {
+    searchInput.value = '';
+    filterItems();
+    searchInput.focus();
+}
+
+searchInput.addEventListener('input', filterItems);
+</script>
+{% endblock %}

@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% macro render_cats(cats, depth, parent_id) %}
+    {% for cat in cats %}
+        <div class="cat-row" data-cat-id="{{ cat.id }}" data-parent="{{ parent_id or '' }}" style="padding-left: {{ depth * 18 }}px;">
+            <div class="d-flex align-items-center cat-line gap-1">
+                {% if cat.children %}
+                    <span class="toggle-btn" onclick="event.stopPropagation(); toggleCat({{ cat.id }})">
+                        <i class="bi bi-caret-right-fill toggle-icon"></i>
+                    </span>
+                {% else %}
+                    <span class="toggle-placeholder"></span>
+                {% endif %}
+                <i class="bi bi-folder-fill text-warning"></i>
+
+                <form method="POST" action="{{ url_for('rename_category', cat_id=cat.id) }}" class="d-flex align-items-center flex-grow-1 gap-1 cat-rename-form">
+                    <input type="text" name="name" class="form-control form-control-sm cat-name-input" value="{{ cat.name }}" readonly>
+                    <button type="button" class="btn btn-sm btn-outline-secondary btn-unlock" onclick="unlockCat(this)" title="Разблокировать"><i class="bi bi-pencil"></i></button>
+                    <button type="submit" class="btn btn-sm btn-outline-success btn-save" style="display: none;" title="Сохранить"><i class="bi bi-check"></i></button>
+                </form>
+
+                <button class="btn btn-sm btn-link text-secondary p-0 px-1" onclick="showAdd({{ cat.id }})" title="Добавить подкатегорию">
+                    <i class="bi bi-plus-circle"></i>
+                </button>
+                <a href="{{ url_for('delete_category', cat_id=cat.id) }}" class="btn btn-sm btn-link text-danger p-0 px-1"
+                   onclick="return confirm('Удалить «{{ cat.name }}» и ВСЕ вложенные?')" title="Удалить">
+                    <i class="bi bi-trash"></i>
+                </a>
+            </div>
+
+            <form method="POST" action="{{ url_for('add_category') }}" class="add-child-form" id="add-form-{{ cat.id }}" style="display: none;">
+                <input type="hidden" name="parent_id" value="{{ cat.id }}">
+                <div class="d-flex gap-1 ms-4 mt-1 mb-2">
+                    <input type="text" name="name" class="form-control form-control-sm" placeholder="Название подкатегории" required>
+                    <button class="btn btn-sm btn-success"><i class="bi bi-check"></i></button>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="hideAdd({{ cat.id }})">×</button>
+                </div>
+            </form>
+
+            {% if cat.children %}
+                <div class="cat-children" data-parent="{{ cat.id }}">
+                    {{ render_cats(cat.children|sort(attribute='name'), depth + 1, cat.id) }}
+                </div>
+            {% endif %}
+        </div>
+    {% endfor %}
+{% endmacro %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h1 class="mb-0"><i class="bi bi-diagram-3"></i> Управление категориями</h1>
+    <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-outline-secondary" onclick="expandAllCats()" title="Раскрыть всё"><i class="bi bi-arrows-expand"></i></button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="collapseAllCats()" title="Свернуть всё"><i class="bi bi-arrows-collapse"></i></button>
+        <a href="{{ url_for('import_categories') }}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-upload"></i> Импорт
+        </a>
+    </div>
+</div>
+
+<form method="POST" action="{{ url_for('add_category') }}" class="d-flex gap-2 mb-3">
+    <input type="text" name="name" class="form-control form-control-sm" placeholder="Новая корневая категория" required>
+    <button class="btn btn-sm btn-success text-nowrap"><i class="bi bi-plus-circle"></i> Создать</button>
+</form>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header py-2"><b><i class="bi bi-diagram-3"></i> Дерево категорий</b></div>
+            <div class="card-body py-2">
+                {% if categories %}
+                    <div class="cat-tree">
+                        {{ render_cats(categories, 0, None) }}
+                    </div>
+                {% else %}
+                    <p class="text-muted mb-0">Категорий пока нет.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card mb-3">
+            <div class="card-header py-2"><b><i class="bi bi-bar-chart"></i> Статистика</b></div>
+            <div class="card-body py-2">
+                <div class="row text-center g-2">
+                    <div class="col-3">
+                        <div class="fs-5 fw-bold">{{ total_notes }}</div>
+                        <div class="text-muted small">Заметок</div>
+                    </div>
+                    <div class="col-3">
+                        <div class="fs-5 fw-bold">{{ total_cats }}</div>
+                        <div class="text-muted small">Категорий</div>
+                    </div>
+                    <div class="col-3">
+                        <div class="fs-5 fw-bold">{{ total_snips }}</div>
+                        <div class="text-muted small">Сниппетов</div>
+                    </div>
+                    <div class="col-3">
+                        <div class="fs-5 fw-bold">{{ total_terms }}</div>
+                        <div class="text-muted small">Терминов</div>
+                    </div>
+                    <div class="col-12 mt-1">
+                        <div class="fs-5 fw-bold">{{ total_links }}</div>
+                        <div class="text-muted small">Ссылок</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header py-2"><b><i class="bi bi-clock-history"></i> Недавние</b></div>
+            <div class="card-body py-2">
+                <ul class="list-unstyled mb-0">
+                    {% for n in recent %}
+                    <li class="mb-1 text-truncate">
+                        <a href="{{ url_for('view_note', note_id=n.id) }}" class="text-decoration-none small">
+                            {% if n.is_pinned %}<i class="bi bi-star-fill pin-star"></i>{% else %}<i class="bi bi-file-text text-muted"></i>{% endif %}
+                            {{ n.title }}
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="text-muted small">Пусто.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .cat-line {
+        padding: 3px 4px;
+        border-radius: 4px;
+        font-size: .92rem;
+    }
+    .cat-line:hover { background: #f8f9fa; }
+    .toggle-btn {
+        width: 18px;
+        display: inline-block;
+        text-align: center;
+        cursor: pointer;
+        color: #6c757d;
+    }
+    .toggle-placeholder { width: 18px; display: inline-block; }
+    .toggle-icon { transition: transform .15s; font-size: .7rem; }
+    .cat-row.collapsed > .cat-children { display: none; }
+    .cat-row.collapsed .toggle-icon { transform: rotate(0); }
+    .cat-row:not(.collapsed) .toggle-icon { transform: rotate(90deg); }
+    .cat-name-input {
+        font-weight: 500;
+        max-width: 500px;
+    }
+    .cat-name-input[readonly] {
+        background: transparent;
+        border-color: transparent;
+    }
+    .cat-name-input[readonly]:hover {
+        background: #fff;
+        border-color: #dee2e6;
+    }
+</style>
+
+<script>
+const CAT_STORAGE_KEY = 'admin-cat-collapsed';
+
+function getCatCollapsed() {
+    try { return JSON.parse(localStorage.getItem(CAT_STORAGE_KEY) || '[]'); }
+    catch (e) { return []; }
+}
+function saveCatCollapsed(arr) {
+    localStorage.setItem(CAT_STORAGE_KEY, JSON.stringify(arr));
+}
+
+function toggleCat(id) {
+    const row = document.querySelector('.cat-row[data-cat-id="' + id + '"]');
+    if (!row) return;
+    row.classList.toggle('collapsed');
+    let collapsed = getCatCollapsed();
+    if (row.classList.contains('collapsed')) {
+        if (!collapsed.includes(id)) collapsed.push(id);
+    } else {
+        collapsed = collapsed.filter(x => x !== id);
+    }
+    saveCatCollapsed(collapsed);
+}
+
+function expandAllCats() {
+    document.querySelectorAll('.cat-row').forEach(r => r.classList.remove('collapsed'));
+    saveCatCollapsed([]);
+}
+
+function collapseAllCats() {
+    const ids = [];
+    document.querySelectorAll('.cat-row').forEach(r => {
+        if (r.querySelector('.cat-children')) {
+            r.classList.add('collapsed');
+            ids.push(parseInt(r.getAttribute('data-cat-id')));
+        }
+    });
+    saveCatCollapsed(ids);
+}
+
+function showAdd(id) {
+    const form = document.getElementById('add-form-' + id);
+    if (form) {
+        form.style.display = 'block';
+        form.querySelector('input[name="name"]').focus();
+    }
+}
+function hideAdd(id) {
+    const form = document.getElementById('add-form-' + id);
+    if (form) form.style.display = 'none';
+}
+
+function unlockCat(btn) {
+    const form = btn.closest('.cat-rename-form');
+    const input = form.querySelector('.cat-name-input');
+    const saveBtn = form.querySelector('.btn-save');
+    input.removeAttribute('readonly');
+    input.focus();
+    input.select();
+    btn.style.display = 'none';
+    saveBtn.style.display = 'inline-block';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const collapsed = getCatCollapsed();
+    collapsed.forEach(id => {
+        const row = document.querySelector('.cat-row[data-cat-id="' + id + '"]');
+        if (row) row.classList.add('collapsed');
+    });
+});
+</script>
+{% endblock %}

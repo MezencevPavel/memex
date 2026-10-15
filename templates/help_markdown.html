@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block content %}
+<h1><i class="bi bi-markdown"></i> Шпаргалка по Markdown</h1>
+
+<div class="card mb-3">
+<div class="card-header py-2"><b>Заголовки</b></div>
+<div class="card-body py-2">
+<pre># Заголовок 1
+## Заголовок 2
+### Заголовок 3</pre>
+</div>
+</div>
+
+<div class="card mb-3">
+<div class="card-header py-2"><b>Текст</b></div>
+<div class="card-body py-2">
+<pre>**жирный**
+*курсив*
+~~зачёркнутый~~
+`код в строке`</pre>
+</div>
+</div>
+
+<div class="card mb-3">
+<div class="card-header py-2"><b>Списки</b></div>
+<div class="card-body py-2">
+<pre>- пункт
+- пункт
+  - вложенный
+
+1. первый
+2. второй</pre>
+</div>
+</div>
+
+<div class="card mb-3">
+<div class="card-header py-2"><b>Ссылки и линии</b></div>
+<div class="card-body py-2">
+<pre>[текст](https://example.com)
+> цитата
+---</pre>
+</div>
+</div>
+
+<div class="card mb-3">
+<div class="card-header py-2"><b>Код (три бэктика, кнопка Ё)</b></div>
+<div class="card-body py-2">
+<pre>```python
+print("Привет")
+```</pre>
+</div>
+</div>
+
+<div class="card mb-3">
+<div class="card-header py-2"><b>Таблицы</b></div>
+<div class="card-body py-2">
+<pre>| A | B |
+|---|---|
+| 1 | 2 |</pre>
+</div>
+</div>
+
+<div class="card mb-3">
+<div class="card-header py-2"><b>Специальное</b></div>
+<div class="card-body py-2">
+<pre>[[Заметка]]      — ссылка на заметку
+{{ '{{' }}термин{{ '}}' }}       — термин из глоссария</pre>
+</div>
+</div>
+
+<div class="alert alert-secondary">
+<b>Совет:</b> код вставляй через Ctrl+Shift+V, чтобы сохранить переносы строк.
+</div>
+{% endblock %}

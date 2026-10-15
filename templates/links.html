@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h1 class="mb-0"><i class="bi bi-link-45deg"></i> Ссылки <span class="text-muted fs-5">({{ links|length }})</span></h1>
+    <div class="d-flex gap-2 flex-wrap">
+        <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                <i class="bi bi-download"></i> Экспорт
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="{{ url_for('export_links', fmt='json') }}"><i class="bi bi-filetype-json"></i> JSON</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('export_links', fmt='md') }}"><i class="bi bi-filetype-md"></i> Markdown</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('export_links', fmt='csv') }}"><i class="bi bi-filetype-csv"></i> CSV (Excel)</a></li>
+            </ul>
+        </div>
+        <a href="{{ url_for('import_links') }}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-upload"></i> Импорт
+        </a>
+        <a href="{{ url_for('add_link') }}" class="btn btn-sm btn-success">
+            <i class="bi bi-plus-circle"></i> Новая
+        </a>
+    </div>
+</div>
+
+<div class="mb-3 d-flex flex-wrap gap-1">
+    <a href="{{ url_for('links') }}"
+       class="btn btn-sm {% if not topic_filter %}btn-primary{% else %}btn-outline-secondary{% endif %}">Все</a>
+    {% for t in topics %}
+    <a href="{{ url_for('links', topic=t) }}"
+       class="btn btn-sm {% if topic_filter == t %}btn-primary{% else %}btn-outline-secondary{% endif %}">{{ t }}</a>
+    {% endfor %}
+</div>
+
+<form method="GET" class="mb-3">
+    <div class="input-group input-group-sm" style="max-width: 500px;">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input type="text" name="q" class="form-control" placeholder="Поиск по названию, URL или описанию..." value="{{ q }}">
+        {% if topic_filter %}<input type="hidden" name="topic" value="{{ topic_filter }}">{% endif %}
+        {% if q %}
+            <a href="{{ url_for('links', topic=topic_filter or None) }}" class="btn btn-outline-secondary"><i class="bi bi-x"></i></a>
+        {% endif %}
+        <button class="btn btn-primary"><i class="bi bi-search"></i></button>
+    </div>
+</form>
+
+{% if links %}
+<div class="row g-3">
+    {% for l in links %}
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div class="flex-grow-1 me-2">
+                        <span class="badge bg-secondary me-1">{{ l.topic or 'Общее' }}</span>
+                        <a href="{{ l.url }}" target="_blank" rel="noopener" class="fw-bold text-decoration-none">
+                            {{ l.title }} <i class="bi bi-box-arrow-up-right small"></i>
+                        </a>
+                    </div>
+                    <div class="d-flex gap-1">
+                        <button class="btn btn-sm btn-outline-secondary copy-url-btn" data-url="{{ l.url }}" title="Копировать URL"><i class="bi bi-clipboard"></i></button>
+                        <a href="{{ url_for('edit_link', link_id=l.id) }}" class="btn btn-sm btn-outline-secondary" title="Редактировать"><i class="bi bi-pencil"></i></a>
+                        <a href="{{ url_for('delete_link', link_id=l.id) }}" class="btn btn-sm btn-outline-danger"
+                           onclick="return confirm('Удалить ссылку «{{ l.title }}»?')" title="Удалить"><i class="bi bi-trash"></i></a>
+                    </div>
+                </div>
+                <div class="text-muted small mb-2 text-truncate" title="{{ l.url }}">
+                    {{ l.url }}
+                </div>
+                {% if l.description %}
+                    <p class="small mb-0">{{ l.description }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-secondary">
+    {% if q or topic_filter %}
+        Ничего не найдено. <a href="{{ url_for('links') }}">Сбросить</a>.
+    {% else %}
+        Ссылок пока нет. <a href="{{ url_for('add_link') }}">Добавь первую</a> или импортируй.
+    {% endif %}
+</div>
+{% endif %}
+
+<script>
+document.querySelectorAll('.copy-url-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        const url = btn.getAttribute('data-url');
+        navigator.clipboard.writeText(url).then(function() {
+            const orig = btn.innerHTML;
+            btn.innerHTML = '<i class="bi bi-check"></i>';
+            btn.classList.add('btn-success');
+            setTimeout(function() {
+                btn.innerHTML = orig;
+                btn.classList.remove('btn-success');
+            }, 1500);
+        });
+    });
+});
+</script>
+{% endblock %}

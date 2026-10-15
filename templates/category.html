@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% macro render_branch(cat, current_id, depth) %}
+    <div class="cat-node" data-cat-id="{{ cat.id }}" style="margin-left: {{ depth * 20 }}px;">
+        <div class="d-flex align-items-center py-1">
+            {% if cat.children %}
+                <span class="toggle-btn" onclick="toggleNode({{ cat.id }})" style="cursor: pointer; width: 20px; text-align: center;">
+                    <i class="bi bi-caret-right-fill toggle-icon"></i>
+                </span>
+            {% else %}
+                <span style="width: 20px; display: inline-block;"></span>
+            {% endif %}
+            <i class="bi bi-folder-fill text-warning me-1"></i>
+            {% if cat.id == current_id %}
+                <b>{{ cat.name }}</b>
+            {% else %}
+                <a href="{{ url_for('view_category', cat_id=cat.id) }}" class="text-decoration-none text-dark">{{ cat.name }}</a>
+            {% endif %}
+            <small class="text-muted ms-2">
+                {% if cat.notes %}· {{ cat.notes|length }} зам.{% endif %}
+                {% if cat.children %}· {{ cat.children|length }} подкат.{% endif %}
+            </small>
+        </div>
+        {% if cat.children %}
+            <div class="cat-children" data-parent="{{ cat.id }}">
+                {% for child in cat.children|sort(attribute='name') %}
+                    {{ render_branch(child, current_id, depth + 1) }}
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+{% endmacro %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Главная</a></li>
+        {% for c in breadcrumb %}
+            {% if loop.last %}
+                <li class="breadcrumb-item active">{{ c.name }}</li>
+            {% else %}
+                <li class="breadcrumb-item"><a href="{{ url_for('view_category', cat_id=c.id) }}">{{ c.name }}</a></li>
+            {% endif %}
+        {% endfor %}
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h1 class="mb-0"><i class="bi bi-folder-fill text-warning"></i> {{ category.name }}</h1>
+    <a href="{{ url_for('add_note', cat_id=category.id) }}" class="btn btn-success">
+        <i class="bi bi-plus-circle"></i> Добавить заметку
+    </a>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-9">
+        {% if children %}
+        <div class="card mb-4">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                <b><i class="bi bi-diagram-3"></i> Дерево категорий</b>
+                <div>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="expandAll()" title="Раскрыть всё"><i class="bi bi-arrows-expand"></i></button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="collapseAll()" title="Свернуть всё"><i class="bi bi-arrows-collapse"></i></button>
+                </div>
+            </div>
+            <div class="card-body py-2">
+                {{ render_branch(category, category.id, 0) }}
+            </div>
+        </div>
+        {% endif %}
+
+        <h5 class="text-muted">Заметки ({{ notes|length }})</h5>
+        <div class="list-group">
+            {% for note in notes %}
+            <div class="list-group-item d-flex justify-content-between align-items-center {% if note.is_pinned %}border-warning{% endif %}">
+                <a href="{{ url_for('view_note', note_id=note.id) }}" class="text-decoration-none text-dark fw-bold flex-grow-1">
+                    {% if note.is_pinned %}<i class="bi bi-star-fill pin-star"></i>{% else %}<i class="bi bi-file-text"></i>{% endif %}
+                    {{ note.title }}
+                </a>
+                <div>
+                    <a href="{{ url_for('toggle_pin', note_id=note.id) }}" class="btn btn-sm btn-outline-warning">
+                        <i class="bi bi-star{% if note.is_pinned %}-fill{% endif %}"></i>
+                    </a>
+                    <a href="{{ url_for('edit_note', note_id=note.id) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+                    <a href="{{ url_for('delete_note', note_id=note.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить?')"><i class="bi bi-trash"></i></a>
+                </div>
+            </div>
+            {% else %}
+            <p class="text-muted">В этой категории пока нет заметок.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="col-lg-3 sidebar-right">
+        <div class="card mb-3">
+            <div class="card-header py-2"><b><i class="bi bi-clock-history"></i> Недавние в категории</b></div>
+            <div class="card-body py-2">
+                <ul class="list-unstyled mb-0">
+                    {% for n in recent_in_cat %}
+                    <li class="mb-1 text-truncate">
+                        <a href="{{ url_for('view_note', note_id=n.id) }}" class="text-decoration-none small">
+                            {% if n.is_pinned %}<i class="bi bi-star-fill pin-star"></i>{% else %}<i class="bi bi-file-text text-muted"></i>{% endif %}
+                            {{ n.title }}
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="text-muted small">Пусто.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header py-2"><b><i class="bi bi-signpost-2"></i> Навигация</b></div>
+            <div class="card-body py-2">
+                {% if parent_cat %}
+                <div class="mb-2">
+                    <div class="small text-muted mb-1">Родитель:</div>
+                    <a href="{{ url_for('view_category', cat_id=parent_cat.id) }}" class="text-decoration-none small">
+                        <i class="bi bi-arrow-up"></i> {{ parent_cat.name }}
+                    </a>
+                </div>
+                {% endif %}
+                {% if siblings_cats %}
+                <div>
+                    <div class="small text-muted mb-1">Соседи:</div>
+                    <ul class="list-unstyled mb-0">
+                        {% for s in siblings_cats %}
+                        <li class="mb-1 text-truncate">
+                            <a href="{{ url_for('view_category', cat_id=s.id) }}" class="text-decoration-none small">
+                                <i class="bi bi-folder2 text-muted"></i> {{ s.name }}
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                {% if not parent_cat and not siblings_cats %}
+                <p class="text-muted small mb-0">Это единственная категория верхнего уровня.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .toggle-icon { transition: transform .15s; }
+    .cat-node.collapsed > .cat-children { display: none; }
+    .cat-node.collapsed .toggle-icon { transform: rotate(0deg); }
+    .cat-node:not(.collapsed) .toggle-icon { transform: rotate(90deg); }
+
+    .sidebar-right {
+        position: sticky;
+        top: 20px;
+        align-self: flex-start;
+        max-height: calc(100vh - 40px);
+        overflow-y: auto;
+    }
+    @media (max-width: 991px) {
+        .sidebar-right { position: static; max-height: none; }
+    }
+</style>
+
+<script>
+const STORAGE_KEY = 'cat-tree-collapsed';
+
+function getCollapsed() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+    catch (e) { return []; }
+}
+function saveCollapsed(arr) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+}
+
+function toggleNode(id) {
+    const node = document.querySelector('.cat-node[data-cat-id="' + id + '"]');
+    if (!node) return;
+    node.classList.toggle('collapsed');
+    let collapsed = getCollapsed();
+    if (node.classList.contains('collapsed')) {
+        if (!collapsed.includes(id)) collapsed.push(id);
+    } else {
+        collapsed = collapsed.filter(x => x !== id);
+    }
+    saveCollapsed(collapsed);
+}
+
+function expandAll() {
+    document.querySelectorAll('.cat-node').forEach(n => n.classList.remove('collapsed'));
+    saveCollapsed([]);
+}
+
+function collapseAll() {
+    const ids = [];
+    document.querySelectorAll('.cat-node').forEach(n => {
+        if (n.querySelector('.cat-children')) {
+            n.classList.add('collapsed');
+            ids.push(parseInt(n.getAttribute('data-cat-id')));
+        }
+    });
+    saveCollapsed(ids);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const collapsed = getCollapsed();
+    collapsed.forEach(id => {
+        const node = document.querySelector('.cat-node[data-cat-id="' + id + '"]');
+        if (node) node.classList.add('collapsed');
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0"><i class="bi bi-upload"></i> Импорт заметок из .md</h1>
+    <a href="{{ url_for('all_notes') }}" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Назад</a>
+</div>
+
+<div class="alert alert-info">
+    Выбери один или несколько <code>.md</code>-файлов. Имя каждого файла (без расширения) станет заголовком заметки.
+</div>
+
+<form method="POST" enctype="multipart/form-data">
+    <div class="mb-3">
+        <label class="form-label">Файлы .md</label>
+        <input type="file" name="files" class="form-control" accept=".md,.markdown,.txt" multiple required>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Категория для новых заметок</label>
+        <select name="category_id" class="form-select">
+            <option value="">— Без категории —</option>
+            {% for c in cat_list %}
+                <option value="{{ c.id }}">{{ c.path }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="btn btn-primary"><i class="bi bi-cloud-upload"></i> Импортировать</button>
+    <a href="{{ url_for('all_notes') }}" class="btn btn-secondary">Отмена</a>
+</form>
+{% endblock %}
