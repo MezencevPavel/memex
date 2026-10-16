@@ -1,0 +1,7 @@
+[memex]
+# Имя хоста в инвентаре — любое. Реальный IP указывается в ansible_host.
+memex-server ansible_host=YOUR_SERVER_IP ansible_user=root
+
+[memex:vars]
+ansible_python_interpreter=/usr/bin/python3
+ansible_ssh_private_key_file=/root/.ssh/id_ed25519

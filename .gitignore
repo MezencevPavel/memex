@@ -33,3 +33,6 @@ backups/
 Thumbs.db
 .vscode/
 .idea/
+
+# Ansible (реальный inventory — локально, в git только .example)
+ansible/inventory.ini

@@ -1,0 +1,82 @@
+---
+- name: Развёртывание Memex на CentOS Stream 9
+  hosts: memex
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Проверка соединения
+      ansible.builtin.ping:
+
+    - name: Установить базовые пакеты
+      ansible.builtin.dnf:
+        name:
+          - git
+          - python3
+          - python3-pip
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Установить python3-devel и gcc (для сборки Pillow)
+      ansible.builtin.dnf:
+        name:
+          - python3-devel
+          - gcc
+        state: present
+
+    - name: Клонировать репозиторий Memex
+      ansible.builtin.git:
+        repo: https://github.com/MezencevPavel/memex.git
+        dest: /opt/memex
+        version: main
+        force: yes
+
+    - name: Создать venv для приложения
+      ansible.builtin.command:
+        cmd: python3 -m venv /opt/memex/venv
+        creates: /opt/memex/venv/bin/activate
+
+    - name: Обновить pip в venv
+      ansible.builtin.pip:
+        name: pip
+        state: latest
+        virtualenv: /opt/memex/venv
+
+    - name: Установить зависимости приложения
+      ansible.builtin.pip:
+        name:
+          - flask
+          - flask-sqlalchemy
+          - flask-login
+          - werkzeug
+          - markdown
+          - gunicorn
+          - Pillow
+        virtualenv: /opt/memex/venv
+        state: present
+    - name: Создать systemd-юнит Memex
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/myservice.service
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Memex — Personal Knowledge Base
+          After=network.target
+
+          [Service]
+          User=root
+          WorkingDirectory=/opt/memex
+          Environment="ADMIN_PASSWORD=CHANGE_ME_ON_FIRST_DEPLOY"
+          ExecStart=/opt/memex/venv/bin/gunicorn --bind 0.0.0.0:8000 app:app
+          Restart=always
+          RestartSec=3
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Включить и запустить сервис Memex
+      ansible.builtin.systemd:
+        name: myservice
+        enabled: true
+        state: restarted
+        daemon_reload: true
