@@ -1,114 +1,119 @@
-# PROJECT.md — Личная база знаний «Мои заметки»
+# PROJECT.md — Memex
 
 > Техническая документация проекта: архитектура, стек, структура, эксплуатация.
+
+**Версия:** `v1.0.0`
 
 ---
 
 ## 1. Что это
 
-**«Мои заметки»** — персональный веб-сервис для хранения учебных и рабочих заметок с авторизацией, деревом категорий неограниченной вложенности, глоссарием терминов, сниппетами и быстрым поиском. Однопользовательский. Регистрация отключена.
+**Memex** — персональный веб-сервис для хранения заметок, глоссария, сниппетов, ссылок и контактов. Однопользовательский. Регистрация отключена.
+
+Название — отсылка к концепции Ванневара Буша (1945): «устройство для расширения памяти».
 
 **Ключевые сущности:**
 
-| Сущность | Для чего | Раздел |
+| Сущность | Назначение | Раздел |
 |---|---|---|
-| **Заметка** | Длинные статьи, шпаргалки, инструкции | `/notes` |
-| **Категория** | Дерево для структуры заметок | `/categories` |
-| **Термин** | Глоссарий: слова, определения | `/glossary` |
-| **Сниппет** | Короткие команды для копирования в один клик | `/snippets` |
+| Заметка | Длинные статьи, шпаргалки, инструкции | `/notes` |
+| Категория | Дерево для структуры заметок | `/categories` |
+| Термин | Глоссарий: слова и определения | `/glossary` |
+| Сниппет | Короткие команды для копирования | `/snippets` |
+| Ссылка | Полезные URL с описанием | `/links` |
+| Контакт | Справочник номеров | `/phones` |
 
-**Ключевые возможности:**
+**Возможности:**
 
-- **Дерево категорий неограниченной вложенности.**
-- **Заметки в Markdown** с живым предпросмотром, датами и сортировкой.
-- **Страница «Все заметки»** с фильтрами (категория, поиск, сортировка).
-- **Импорт/экспорт заметок в `.md`** — пишешь локально, загружаешь в приложение.
-- **Глоссарий и сниппеты с темами** (Python, PowerShell, Docker...). Свободный ввод темы + автодополнение.
-- **Импорт/экспорт глоссария и сниппетов** в JSON, Markdown, CSV — и вставкой, и файлом.
-- **Ссылки между заметками** `[[Название]]` и терминами `{{термин}}`.
-- **Быстрый поиск по глоссарию** прямо из заметки (с фильтром по теме).
-- **Быстрый поиск по сниппетам** из заметки (с фильтром по теме).
-- **Быстрый переключатель заметок** сверху (← назад, поле поиска, ▼ список).
-- **TOC (оглавление)** из заголовков, «Рядом в категории», «Недавние».
-- **Избранное** (закреплённые заметки).
-- **Кнопка «Копировать»** на блоках кода и сниппетах.
-- **Импорт категорий из JSON.**
-- **HTTPS + systemd + Fail2ban + автобэкап.**
-
----
-
-## 2. Где хостится
-
-| Параметр | Значение |
-|---|---|
-| Провайдер | VDSina |
-| IP | 84.54.47.135 |
-| Домен | v3270506.hosted-by-vdsina.ru |
-| Тариф | 1 ядро, 1 ГБ RAM, 10 ГБ NVMe |
-| ОС | Ubuntu 24.04 |
-| HTTPS | Let's Encrypt через Certbot |
-| SSH | порт 22, root |
-| Панель | https://vdsina.ru |
-
-**Пароли — храню локально. В этом документе их нет.**
+- Дерево категорий неограниченной вложенности.
+- Заметки в Markdown с живым предпросмотром, датами и сортировкой.
+- Страница «Все заметки» с фильтрами (категория, поиск, сортировка).
+- Импорт и экспорт заметок в `.md`.
+- Загрузка картинок с автоматическим сжатием в WebP.
+- Глоссарий и сниппеты с темами (Python, PowerShell, Docker...).
+- Импорт и экспорт глоссария и сниппетов в JSON, Markdown, CSV — вставкой и файлом.
+- Ссылки между заметками `[[Название]]` и терминами `{{термин}}`.
+- Быстрый поиск по глоссарию и сниппетам из правой панели заметки.
+- Быстрый переключатель заметок (← назад, поле поиска, ▼ список).
+- TOC (оглавление), «Рядом в категории», «Недавние».
+- Избранное (закреплённые заметки).
+- Кнопка «Копировать» на блоках кода и сниппетах.
+- Импорт категорий из JSON.
+- HTTPS, systemd, Fail2ban, автобэкап.
 
 ---
 
-## 3. Стек
+## 2. Стек
 
 | Слой | Технология |
 |---|---|
-| Язык | Python 3.12 |
+| Язык | Python 3.9+ |
 | Веб-фреймворк | Flask |
 | ORM | Flask-SQLAlchemy |
 | Аутентификация | Flask-Login + Werkzeug |
-| БД | SQLite (`instance/notes.db`) |
+| База данных | SQLite (`instance/notes.db`) |
 | WSGI | Gunicorn |
 | Reverse proxy | Nginx |
 | Markdown (сервер) | Python-Markdown |
 | Markdown (клиент) | marked.js (локально) |
-| CSS | Bootstrap 5 + Icons (CDN) |
-| JS (dropdown и др.) | Bootstrap 5 bundle (CDN) |
+| CSS | Bootstrap 5 + Icons |
+| JS | Bootstrap 5 bundle |
+| Изображения | Pillow (WebP) |
 | Процесс-менеджер | systemd |
 | Защита SSH | Fail2ban |
 | Бэкап | bash + cron |
 
 ---
 
-## 4. Структура файлов
+## 3. Структура проекта
 
 ```
-/root/myservice/
-├── app.py
-├── PROJECT.md
-├── instance/notes.db
-├── static/js/marked.min.js
+/opt/memex/
+├── app.py                       # всё приложение (Flask)
+├── requirements.txt             # Python-зависимости
+├── README.md                    # краткое описание
+├── PROJECT.md                   # этот файл
+├── ansible/                     # автоматическое развёртывание
+│   ├── playbook.yml
+│   ├── inventory.ini.example
+│   └── README.md
+├── instance/
+│   └── notes.db                 # база данных SQLite
+├── static/
+│   ├── img/logo.png
+│   ├── js/marked.min.js
+│   └── uploads/                 # загруженные картинки (год/месяц)
 ├── templates/
-│   ├── base.html                    ← сайдбар + Bootstrap JS
+│   ├── base.html
 │   ├── login.html
-│   ├── index.html                   ← Недавние + Избранное + Категории
-│   ├── all_notes.html               ← Все заметки + кнопка «Импорт .md»
-│   ├── notes_import_md.html         ← форма импорта .md
-│   ├── category.html                ← дерево-аккордеон + правая колонка
-│   ├── note.html                    ← просмотр + поиск по глоссарию/сниппетам
-│   ├── edit.html                    ← редактор + кнопки .md
+│   ├── index.html
+│   ├── all_notes.html
+│   ├── notes_import_md.html
+│   ├── category.html
+│   ├── categories.html
+│   ├── categories_import.html
+│   ├── note.html
+│   ├── edit.html
 │   ├── search.html
-│   ├── categories.html              ← дерево с замочком + правая колонка
-│   ├── categories_import.html       ← импорт JSON (файл/текст)
-│   ├── glossary.html                ← табы тем + термины
-│   ├── glossary_import.html         ← импорт (файл/текст)
-│   ├── snippets.html                ← табы тем + карточки
-│   ├── snippet_edit.html            ← форма с темой
-│   ├── snippets_import.html         ← импорт (файл/текст)
-│   └── about.html                   ← рендер PROJECT.md
-└── venv/
+│   ├── glossary.html
+│   ├── glossary_import.html
+│   ├── snippets.html
+│   ├── snippet_edit.html
+│   ├── snippets_import.html
+│   ├── links.html
+│   ├── link_edit.html
+│   ├── links_import.html
+│   ├── phones.html
+│   ├── phone_edit.html
+│   ├── phones_import.html
+│   ├── help_markdown.html
+│   └── about.html
+└── venv/                        # виртуальное окружение
 ```
-
-**Бэкапы:** `/root/backups/notes-backup-YYYY-MM-DD_HH-MM.tar.gz` (7 последних).
 
 ---
 
-## 5. Модели БД
+## 4. Модели БД
 
 ### User
 - `id`, `username` (unique), `password_hash`
@@ -123,17 +128,25 @@
 - `created_at`, `updated_at` (UTC)
 
 ### GlossaryTerm
-- `id`, `term`, `definition` (Markdown), **`topic`** (Python, Docker...), `user_id`
+- `id`, `term`, `definition` (Markdown), `topic`, `user_id`
 
 ### Snippet
-- `id`, `name`, `command`, `description`, **`topic`**, `user_id`
+- `id`, `name`, `command`, `description`, `topic`, `user_id`
+- `created_at`, `updated_at`
+
+### Link
+- `id`, `title`, `url`, `description`, `topic`, `user_id`
+- `created_at`, `updated_at`
+
+### Phone
+- `id`, `name`, `number`, `description`, `topic`, `user_id`
 - `created_at`, `updated_at`
 
 ---
 
-## 6. Маршруты
+## 5. Маршруты
 
-| URL | Метод | Что делает |
+| URL | Метод | Назначение |
 |---|---|---|
 | `/` | GET | Главная: Недавние + Избранное + Категории |
 | `/notes` | GET | Все заметки (фильтры: `q`, `cat`, `sort`) |
@@ -160,45 +173,62 @@
 | `/snippets/add` / `edit` / `delete` | GET/POST | CRUD сниппетов |
 | `/snippets/import` | GET/POST | Импорт (JSON/MD/CSV) |
 | `/snippets/export.<fmt>` | GET | Экспорт JSON/MD/CSV |
+| `/links` | GET | Ссылки |
+| `/links/add` / `edit` / `delete` | GET/POST | CRUD ссылок |
+| `/links/import` | GET/POST | Импорт (JSON/MD/CSV) |
+| `/links/export.<fmt>` | GET | Экспорт JSON/MD/CSV |
+| `/phones` | GET | Контакты |
+| `/phones/add` / `edit` / `delete` | GET/POST | CRUD контактов |
+| `/phones/import` | GET/POST | Импорт (JSON/MD/CSV) |
+| `/phones/export.<fmt>` | GET | Экспорт JSON/MD/CSV |
+| `/upload/image` | POST | Загрузка картинки (сжатие в WebP) |
+| `/help/markdown` | GET | Шпаргалка по Markdown |
 | `/about` | GET | Рендер PROJECT.md |
-| `/login` / `/logout` | GET/POST | Вход/выход |
-| `/api/glossary/search` | GET | JSON-поиск (по началу термина, фильтр `topic`) |
+| `/login`, `/logout` | GET/POST | Вход / выход |
+| `/api/glossary/search` | GET | JSON-поиск терминов |
 | `/api/categories/search` | GET | JSON-поиск категорий |
 | `/api/notes/search` | GET | JSON-поиск заметок |
+| `/api/categories/tree` | GET | Дерево категорий для модалки перемещения |
+| `/api/links/search` | GET | JSON-поиск ссылок |
 
 ---
 
-## 7. Синтаксис в заметках
+## 6. Синтаксис в заметках
 
 ### Ссылки между заметками: `[[Название]]`
-- Есть → синяя ссылка.
-- Нет → красная, клик создаёт новую с предзаполненным заголовком.
+- Есть — синяя ссылка.
+- Нет — красная, клик создаёт новую с предзаполненным заголовком.
 
 ### Термины глоссария: `{{термин}}`
-- Есть → пурпурный пунктир + tooltip.
-- Нет → красный пунктир.
+- Есть — пурпурный пунктир + tooltip.
+- Нет — красный пунктир.
+
+### Картинки
+- `![alt](url)` — стандартный Markdown.
+- `<img src="..." width="400">` — с явной шириной.
+- Кнопка «Картинка» в редакторе или `Ctrl+V` со скриншотом.
 
 ---
 
-## 8. Импорт / экспорт
+## 7. Импорт и экспорт
 
 ### Заметки
-- **Экспорт одной заметки:** кнопка «📥 .md» на странице просмотра и в редакторе. Имя файла = `заголовок.md` (slug).
-- **Импорт `.md` → новая заметка:** кнопка «📤 .md» в редакторе (без выбора категории).
-- **Пакетный импорт `.md`:** страница `/notes/import.md` (со страницы «Все заметки»). Заголовок = имя файла. Можно выбрать категорию.
+- **Экспорт одной заметки:** кнопка `.md` на странице просмотра и в редакторе.
+- **Импорт `.md` → новая заметка:** кнопка `.md` в редакторе.
+- **Пакетный импорт `.md`:** страница `/notes/import.md`. Заголовок = имя файла, можно выбрать категорию.
 
-### Глоссарий / Сниппеты
-- **Экспорт:** JSON / Markdown / CSV (dropdown «Экспорт»).
+### Глоссарий, сниппеты, ссылки, контакты
+- **Экспорт:** JSON / Markdown / CSV.
 - **Импорт:** через `input type="file"` или вставкой текста. Формат определяется автоматически.
 - **Тема:** указывается у каждого элемента или берётся «Тема по умолчанию».
-- **Дубликаты** (по названию + теме) обновляются, если данные отличаются.
+- **Дубликаты** (по названию и теме) обновляются, если данные отличаются.
 
 ### Категории
-- **Только JSON.** Вложенность через `children`. Дубликаты по имени+родителю пропускаются.
+- **Только JSON.** Вложенность через `children`. Дубликаты по имени и родителю пропускаются.
 
 ---
 
-## 9. Управление сервисом
+## 8. Управление сервисом
 
 ```bash
 systemctl status myservice
@@ -213,11 +243,11 @@ journalctl -u myservice -n 50
 /etc/nginx/sites-available/myservice
 /etc/systemd/system/myservice.service
 /etc/fail2ban/jail.local
-/root/backup-notes.sh
-/var/log/notes-backup.log
+/root/backup-memex.sh
+/var/log/memex-backup.log
 ```
 
-### Nginx / сертификат
+### Nginx и сертификат
 ```bash
 nginx -t
 systemctl reload nginx
@@ -232,101 +262,129 @@ fail2ban-client set sshd unbanip 1.2.3.4
 
 ---
 
-## 10. Развёртывание с нуля
+## 9. Развёртывание с нуля
 
-1. **VPS** (Ubuntu 24.04, 1 ГБ RAM).
-2. **SSH:**
-   ```bash
-   ssh root@IP
-   ```
-3. **Пакеты:**
-   ```bash
-   apt update && apt upgrade -y
-   apt install -y python3 python3-pip python3-venv nginx fail2ban certbot python3-certbot-nginx sqlite3
-   ```
-4. **Проект:**
-   ```bash
-   mkdir -p ~/myservice/static/js ~/myservice/templates
-   cd ~/myservice
-   python3 -m venv venv
-   source venv/bin/activate
-   pip install flask flask-sqlalchemy flask-login werkzeug markdown gunicorn
-   curl -o static/js/marked.min.js https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js
-   ```
-5. **Восстановить `app.py`, `PROJECT.md`, шаблоны.**
-6. **systemd** — `/etc/systemd/system/myservice.service`:
-   ```ini
-   [Unit]
-   Description=My Flask Notes Service
-   After=network.target
+### 1. Требования
 
-   [Service]
-   User=root
-   WorkingDirectory=/root/myservice
-   Environment="ADMIN_PASSWORD=ваш-пароль"
-   ExecStart=/root/myservice/venv/bin/gunicorn --bind 127.0.0.1:8000 app:app
-   Restart=always
-   RestartSec=3
+- VPS с Ubuntu 22.04 / 24.04 или CentOS Stream 9.
+- 1 ГБ RAM, 10 ГБ диска.
+- Root-доступ по SSH.
 
-   [Install]
-   WantedBy=multi-user.target
-   ```
-   ```bash
-   systemctl daemon-reload
-   systemctl enable --now myservice
-   ```
-7. **Nginx:**
-   ```nginx
-   server {
-       listen 80;
-       server_name v3270506.hosted-by-vdsina.ru;
-       location / {
-           proxy_pass http://127.0.0.1:8000;
-           proxy_set_header Host $host;
-           proxy_set_header X-Real-IP $remote_addr;
-       }
-   }
-   ```
-   ```bash
-   ln -s /etc/nginx/sites-available/myservice /etc/nginx/sites-enabled/
-   rm /etc/nginx/sites-enabled/default
-   nginx -t && systemctl restart nginx
-   ```
-8. **HTTPS:**
-   ```bash
-   certbot --nginx -d v3270506.hosted-by-vdsina.ru
-   ```
-9. **Fail2ban** (см. раздел 11).
-10. **Бэкап** (см. раздел 12).
+### 2. Системные пакеты (Ubuntu)
+
+```bash
+apt update
+apt install -y python3 python3-pip python3-venv nginx fail2ban certbot python3-certbot-nginx sqlite3 git
+```
+
+### 3. Клонирование и окружение
+
+```bash
+mkdir -p /opt/memex
+cd /opt/memex
+git clone https://github.com/MezencevPavel/memex.git .
+
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+### 4. Клиентский Markdown-парсер
+
+```bash
+mkdir -p static/js
+curl -o static/js/marked.min.js https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js
+```
+
+### 5. systemd-юнит
+
+`/etc/systemd/system/myservice.service`:
+
+```ini
+[Unit]
+Description=Memex — Personal Knowledge Base
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/opt/memex
+Environment="ADMIN_PASSWORD=CHANGE_ME"
+ExecStart=/opt/memex/venv/bin/gunicorn --bind 127.0.0.1:8000 app:app
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+systemctl daemon-reload
+systemctl enable --now myservice
+```
+
+### 6. Nginx
+
+`/etc/nginx/sites-available/memex`:
+
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+```bash
+ln -s /etc/nginx/sites-available/memex /etc/nginx/sites-enabled/
+rm /etc/nginx/sites-enabled/default
+nginx -t && systemctl restart nginx
+```
+
+### 7. HTTPS
+
+```bash
+certbot --nginx -d your-domain.com
+```
+
+### Автоматическое развёртывание
+
+См. папку `ansible/` — playbook для CentOS Stream 9.
 
 ### Миграции БД
+
 ```bash
-sqlite3 ~/myservice/instance/notes.db "ALTER TABLE note ADD COLUMN created_at DATETIME;"
-sqlite3 ~/myservice/instance/notes.db "ALTER TABLE note ADD COLUMN updated_at DATETIME;"
-sqlite3 ~/myservice/instance/notes.db "ALTER TABLE glossary_term ADD COLUMN topic VARCHAR(100);"
-sqlite3 ~/myservice/instance/notes.db "ALTER TABLE snippet ADD COLUMN topic VARCHAR(100);"
+sqlite3 /opt/memex/instance/notes.db "ALTER TABLE note ADD COLUMN created_at DATETIME;"
+sqlite3 /opt/memex/instance/notes.db "ALTER TABLE note ADD COLUMN updated_at DATETIME;"
+sqlite3 /opt/memex/instance/notes.db "ALTER TABLE glossary_term ADD COLUMN topic VARCHAR(100);"
+sqlite3 /opt/memex/instance/notes.db "ALTER TABLE snippet ADD COLUMN topic VARCHAR(100);"
 ```
 
 ---
 
-## 11. Безопасность
+## 10. Безопасность
 
 ### SSH
 - Порт 22, root по паролю.
-- **Fail2ban** в `/etc/fail2ban/jail.local`:
-  ```ini
-  [DEFAULT]
-  bantime = 1h
-  findtime = 10m
-  maxretry = 5
+- Fail2ban в `/etc/fail2ban/jail.local`:
 
-  [sshd]
-  enabled = true
-  port = ssh
-  logpath = /var/log/auth.log
-  maxretry = 5
-  bantime = 1h
-  ```
+```ini
+[DEFAULT]
+bantime = 1h
+findtime = 10m
+maxretry = 5
+
+[sshd]
+enabled = true
+port = ssh
+logpath = /var/log/auth.log
+maxretry = 5
+bantime = 1h
+```
 
 ### HTTPS
 - Let's Encrypt, автопродление systemd-таймером.
@@ -334,13 +392,17 @@ sqlite3 ~/myservice/instance/notes.db "ALTER TABLE snippet ADD COLUMN topic VARC
 
 ### Приложение
 - Один пользователь `admin`.
-- Пароль — **из переменной `ADMIN_PASSWORD`** в systemd-юните (при создании новой базы).
+- Пароль — из переменной `ADMIN_PASSWORD` в systemd-юните (при создании новой базы).
 - Существующая база не пересоздаётся.
 
 ### Смена пароля admin
+
 ```bash
-cd ~/myservice && source venv/bin/activate && python3
+cd /opt/memex
+source venv/bin/activate
+python3
 ```
+
 ```python
 from app import app, db, User
 from werkzeug.security import generate_password_hash
@@ -354,89 +416,57 @@ exit()
 
 ---
 
-## 12. Бэкап
+## 11. Бэкап
 
-Скрипт `/root/backup-notes.sh`:
-- Архивирует `instance/notes.db` + `static/`.
-- Складывает в `/root/backups/notes-backup-YYYY-MM-DD_HH-MM.tar.gz`.
-- Удаляет архивы старше 7 дней.
-- Лог: `/var/log/notes-backup.log`.
+Скрипт `/root/backup-memex.sh`:
 
-**Cron:** `crontab -e` → `0 3 * * * /root/backup-notes.sh`.
+- Архивирует `instance/notes.db` и `static/uploads/`.
+- Складывает в `/root/backups/memex-YYYY-MM-DD_HH-MM.tar.gz`.
+- Хранит **5 последних** архивов.
+- Лог: `/var/log/memex-backup.log`.
+
+**Запуск вручную:**
+
+```bash
+/root/backup-memex.sh
+```
 
 **Восстановление:**
+
 ```bash
 systemctl stop myservice
-cd ~/myservice
-tar -xzf /root/backups/notes-backup-XXXX.tar.gz
+cd /opt/memex
+tar -xzf /root/backups/memex-XXXX.tar.gz
 systemctl start myservice
 ```
 
-**Скачать на комп:**
+**Выгрузка на локальный компьютер:**
+
 ```powershell
-scp root@84.54.47.135:/root/backups/notes-backup-XXXX.tar.gz C:\Users\Ты\Desktop\
+scp -o StrictHostKeyChecking=no root@<SERVER_IP>:/root/backups/memex-*.tar.gz .
 ```
 
----
-
-## 13. Сделано ✅ и в планах 📋
-
-### Сделано
-- [x] Авторизация
-- [x] Дерево категорий неограниченной вложенности
-- [x] Переименование с замочком (readonly + кнопка ✏️)
-- [x] Заметки в Markdown + живой предпросмотр
-- [x] Даты создания/изменения + сортировка
-- [x] Страница «Все заметки» с фильтрами
-- [x] Импорт заметок из `.md` (одна / пакетно)
-- [x] Экспорт заметки в `.md` (просмотр + редактор)
-- [x] Ссылки между заметками `[[...]]`
-- [x] Глоссарий с темами (Python, Docker...) + `{{...}}` tooltip
-- [x] Сниппеты с темами + копирование в один клик
-- [x] Быстрый поиск по глоссарию из заметки (с фильтром темы)
-- [x] Быстрый поиск по сниппетам из заметки (с фильтром темы)
-- [x] Быстрый переключатель заметок (← / поле / ▼)
-- [x] TOC + «Рядом в категории» + «Недавние»
-- [x] Импорт/экспорт глоссария: JSON / MD / CSV (файл + текст)
-- [x] Импорт/экспорт сниппетов: JSON / MD / CSV (файл + текст)
-- [x] Импорт категорий из JSON
-- [x] HTTPS + systemd + Fail2ban + автобэкап
-
-### В планах
-- [ ] Массовый экспорт всех заметок в `.zip`
-- [ ] Прикреплённые файлы
-- [ ] Тёмная тема
-- [ ] История версий заметок
-- [ ] Теги (в дополнение к категориям)
+Хранить 5 последних архивов локально.
 
 ---
 
-## 14. Известные грабли
+## 12. Известные грабли
 
-1. **Jinja-макросы объявлять ДО вызова.**
+1. **Jinja-макросы объявлять до вызова.**
 2. **`position: sticky` не работает внутри flex с overflow.**
-3. **SQLite `LIKE`/`ILIKE` регистрозависим для кириллицы.** Поиск делаем **в Python** (`filter_ci`).
+3. **SQLite `LIKE`/`ILIKE` регистрозависим для кириллицы** — поиск выполняется в Python (`filter_ci`).
 4. **SQLite не мигрирует автоматически** — `ALTER TABLE`.
 5. **Flask + Gunicorn не подхватывает правки на лету** — `systemctl restart myservice`.
-6. **Bootstrap JS обязателен** для dropdown'ов. Подключён в `base.html` через `bootstrap.bundle.min.js`.
+6. **Bootstrap JS обязателен** для dropdown-меню — подключён в `base.html`.
 7. **`marked.js` локально** — иначе предпросмотр может отвалиться.
-8. **VS Code Remote SSH жрёт 300–500 МБ RAM.** При 1 ГБ лучше PuTTY.
-9. **`ADMIN_PASSWORD` в systemd** — только для новых баз. Существующая не перезаписывается.
-10. **Дерево категорий в сайдбаре — только корневые** (специально).
+8. **`ADMIN_PASSWORD` в systemd** — только для новых баз. Существующая не перезаписывается.
+9. **Дерево категорий в сайдбаре — только корневые** (по замыслу).
+10. **`git clone` в непустую папку падает** — в Ansible-плейбуке `git clone` идёт первым шагом, остальное — после.
 
 ---
 
-## 15. Как пользоваться этим документом
+## 13. Документация
 
-**Ты:** открой `~/myservice/PROJECT.md` или локальную копию.
-
-**Обновление документации:** при значительных изменениях архитектуры дополняй этот файл, чтобы документация оставалась актуальной.
-
-**Если сервер сдох:**
-1. Локальная копия `PROJECT.md`.
-2. Локальная копия `app.py` и шаблонов.
-3. Бэкапы в `/root/backups/` — **качай иногда на комп**.
-
----
-
-*Обновление: добавлены темы, сниппеты, .md-импорт/экспорт, замочек категорий, файловый импорт.*
+- Краткое описание проекта: `README.md`.
+- Автоматическое развёртывание: `ansible/README.md`.
+- Шпаргалка по Markdown: страница `/help/markdown`.
